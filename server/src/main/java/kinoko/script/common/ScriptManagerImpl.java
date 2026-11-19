@@ -265,7 +265,7 @@ public final class ScriptManagerImpl implements ScriptManager {
                     cs.getSp().setSp(1, Math.max(cs.getLevel() - 10, 0) * 3 + 3);
                 }
                 case 2, 3, 4, 5, 6, 10 -> {
-                    cs.getSp().addSp(jobLevel, 3); // 1st – 6th & 10th Mastery -> Extra 3 SP at each activation level
+                    cs.getSp().addSp(jobLevel, 3); // 1st â€“ 6th & 10th Mastery -> Extra 3 SP at each activation level
                 }
                 case 7, 8, 9 -> {
                     cs.getSp().addSp(jobLevel, 5); // 7th - 9th Mastery -> Extra 5 SP at each activation level
@@ -932,6 +932,11 @@ public final class ScriptManagerImpl implements ScriptManager {
     }
 
     @Override
+    public void setObjectState(String name, int state) {
+        field.setObjectState(name, state);
+    }
+
+    @Override
     public void broadcastMessage(String message) {
         field.broadcastPacket(MessagePacket.system(message));
     }
@@ -1050,11 +1055,10 @@ public final class ScriptManagerImpl implements ScriptManager {
         final String optionString = options.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(entry -> {
+                    // Keep section spacing outside the clickable option so its arrow stays beside its label.
                     final String label = entry.getValue();
                     int start = 0;
-                    while (start < label.length() && (label.charAt(start) == '\r' || label.charAt(start) == '\n')) {
-                        start++;
-                    }
+                    while (start < label.length() && (label.charAt(start) == '\r' || label.charAt(start) == '\n')) start++;
                     return label.substring(0, start) + String.format("#L%d# #b%s#k#l", entry.getKey(), label.substring(start));
                 })
                 .collect(Collectors.joining("\r\n"));

@@ -294,6 +294,11 @@ public final class AttackHandler {
         }
     }
 
+    public static void handleAutomatedAttack(User user, Attack attack) {
+        if (!user.isAutomated()) throw new IllegalArgumentException("Automated attacks require a crew character");
+        handleAttack(user, attack);
+    }
+
     private static void handleAttack(User user, Attack attack) {
         // Assign attack random
         for (AttackInfo ai : attack.getAttackInfo()) {
@@ -500,7 +505,9 @@ public final class AttackHandler {
             }
             final Mob mob = mobResult.get();
             // Verify damage
-            if (attack.isMagicAttack()) {
+            if (user.isAutomated()) {
+                kinoko.bot.CrewDamage.calculate(user, mob, attack, ai);
+            } else if (attack.isMagicAttack()) {
                 CalcDamage.calcMDamage(user, mob, attack, ai);
             } else {
                 CalcDamage.calcPDamage(user, mob, attack, ai);

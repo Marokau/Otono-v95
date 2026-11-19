@@ -21,6 +21,8 @@ public final class MapProvider implements WzProvider {
     private static final Map<Integer, Integer> mapLinks = new HashMap<>();
     private static final Map<Integer, Integer> areaCodes = new HashMap<>(); // key -> category
     private static int crcConstant;
+    private static PhysicsConstants physicsConstants;
+    public static PhysicsConstants getPhysicsConstants() { return physicsConstants; }
 
     public static void initialize() {
         try (final WzPackage source = WzPackage.from(MAP_WZ)) {
@@ -67,7 +69,8 @@ public final class MapProvider implements WzProvider {
         if (!((WzImage) source.getItem("Physics.img") instanceof WzImage physicsImage)) {
             throw new ProviderError("Could not resolve Map.wz/Physics.img");
         }
-        crcConstant = Crc32.computeCrcConstant(PhysicsConstants.from(physicsImage.getProperty()));
+        physicsConstants = PhysicsConstants.from(physicsImage.getProperty());
+        crcConstant = Crc32.computeCrcConstant(physicsConstants);
     }
 
     private static void loadMapInfos(WzPackage source) throws ProviderError {

@@ -90,6 +90,14 @@ public final class HitHandler {
         handleHit(user, hitInfo);
     }
 
+    public static void handleAutomatedHit(User user, Mob mob, int attackIndex, int damage) {
+        if (!user.isAutomated()) throw new IllegalArgumentException("Automated hits require a crew character");
+        final HitInfo hit = new HitInfo();
+        hit.attackIndex = attackIndex; hit.damage = damage; hit.mobId = mob.getId(); hit.templateId = mob.getTemplateId();
+        hit.dir = (byte) (mob.getX() < user.getX() ? 1 : 0); hit.knockback = 1;
+        if (attackIndex >= 0) handleMobAttack(user, hit);
+        handleHit(user, hit);
+    }
     private static void handleMobAttack(User user, HitInfo hitInfo) {
         // Resolve mob attack and attack index
         final Optional<MobTemplate> mobTemplateResult = MobProvider.getMobTemplate(hitInfo.templateId);

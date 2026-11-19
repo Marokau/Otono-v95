@@ -1,6 +1,6 @@
 package kinoko.server.node;
 
-import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.Channel;
 import kinoko.database.DatabaseManager;
 import kinoko.packet.ClientPacket;
 import kinoko.server.netty.NettyClient;
@@ -8,14 +8,23 @@ import kinoko.world.user.Account;
 import kinoko.world.user.User;
 
 public final class Client extends NettyClient {
+    private boolean closed;
+    private final boolean automated;
     private Account account;
     private User user;
     private byte[] machineId;
     private byte[] clientKey;
 
-    public Client(ServerNode serverNode, SocketChannel socketChannel) {
-        super(serverNode, socketChannel);
+    public Client(ServerNode serverNode, Channel socketChannel) {
+        this(serverNode, socketChannel, false);
     }
+
+    public Client(ServerNode serverNode, Channel channel, boolean automated) {
+        super(serverNode, channel);
+        this.automated = automated;
+    }
+
+    public boolean isAutomated() { return automated; }
 
     public Account getAccount() {
         return account;
@@ -55,6 +64,9 @@ public final class Client extends NettyClient {
 
     @Override
     public synchronized void close() {
+        if (closed) return;
+        closed = true;
+        if (user != null && !automated && !user.isInTransfer()) { kinoko.bot.KpqCrewService.dismiss(user); }
         super.close();
         if (user == null) {
             if (account != null) {

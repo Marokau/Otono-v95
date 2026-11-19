@@ -25,7 +25,7 @@ public abstract class ServerNode extends Node {
         if (isShutdown()) {
             throw new IllegalStateException("Tried to add client after shutdown");
         }
-        if (!client.getSocketChannel().isActive()) {
+        if (!client.getChannel().isActive()) {
             throw new IllegalStateException("Tried to add client with inactive socket");
         }
         clientStorage.addClient(client);

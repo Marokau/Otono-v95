@@ -3,3 +3,7 @@
 rewards:
   - [ 0, 56, 84, 0.600000 ]
   - [ 4001008, 1, 1, 1.000000 ] # Pass
+
+  # Hidden Street confirms a chance of Squishy Shoes, but does not give its rate.
+  # Otono provisional rate: 10%; tune when period-specific probability evidence is available.
+  - [ 1072369, 1, 1, 0.100000 ] # Squishy Shoes

@@ -381,7 +381,7 @@ public final class CharacterStat implements Encodable {
             } else {
                 setBaseStr((short) (getBaseStr() + 4));
                 statMap.put(Stat.STR, getBaseStr());
-                setBaseDex((short) (getBaseDex() + 4));
+                setBaseDex((short) (getBaseDex() + StatConstants.getIncAp(getLevel(), getJob()) - 4));
                 statMap.put(Stat.DEX, getBaseDex());
             }
         } else {

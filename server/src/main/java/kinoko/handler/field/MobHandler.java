@@ -104,6 +104,7 @@ public final class MobHandler {
         mai.multiTargetForBall = multiTargetForBall;
         mai.randTimeForAreaAttack = randTimeForAreaAttack;
         handleMobAttack(mob, mai);
+        kinoko.bot.CrewEncounters.observeAttack(mob, mai);
 
         // Update client
         final boolean nextAttackPossible = (mai.actionMask & 0x1) != 0;
@@ -245,6 +246,12 @@ public final class MobHandler {
         }
     }
 
+    public static void handleAutomatedMove(Mob mob, MobAttackInfo attack, MovePath path) {
+        path.applyTo(mob);
+        handleMobAttack(mob, attack);
+        kinoko.bot.CrewEncounters.observeAttack(mob, attack);
+        mob.getField().broadcastPacket(MobPacket.mobMove(mob, attack, path));
+    }
     private static void handleMobAttack(Mob mob, MobAttackInfo mai) {
         final int action = mai.actionAndDir >> 1;
         mai.isAttack = action >= MobActionType.ATTACK1.getValue() && action <= MobActionType.ATTACKF.getValue();

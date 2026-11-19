@@ -9,6 +9,7 @@
 #include "wvs/inputsystem.h"
 #include "wvs/animationdisplayer.h"
 #include <cstdint>
+#include <cstring>
 
 
 static auto CUserLocal__Jump = reinterpret_cast<void(__thiscall*)(CUserLocal*, int32_t)>(0x0090A1D0);
@@ -165,7 +166,43 @@ void __declspec(naked) CUIQuestInfoDetail__Draw_hook() {
 }
 
 
+// Remote magic playback normally requires a 50-unit gap before the monster's
+// near edge. Magic Claw hits the monster directly, including at contact.
+static const uintptr_t remoteMagicDistanceCheck = 0x00958F65;
+static const uintptr_t remoteMagicPlayTarget = 0x00958F7F;
+static const uintptr_t remoteMagicStopTargets = 0x009594E1;
+
+static void __declspec(naked) RemoteMagicClawTarget() {
+    __asm {
+        test eax, eax                   // result of IsRectEmpty
+        jnz emptyTarget
+        cmp dword ptr [esp + 0x20], 2001005
+        je playClaw
+        jmp [remoteMagicDistanceCheck]
+    playClaw:
+        jmp [remoteMagicPlayTarget]
+    emptyTarget:
+        jmp [remoteMagicStopTargets]
+    }
+}
+
+static void FixRemoteMagicClawPlayback() {
+    // Match the v95.1 empty-rectangle branch and both near-edge comparisons.
+    static constexpr unsigned char expected[] = {
+        0x85, 0xC0, 0x0F, 0x85, 0x7C, 0x05, 0x00, 0x00,
+        0x85, 0xFF, 0x74, 0x0C, 0x3B, 0x5C, 0x24, 0x40,
+        0x0F, 0x8E, 0x6E, 0x05, 0x00, 0x00, 0xEB, 0x0A,
+        0x3B, 0x5C, 0x24, 0x38, 0x0F, 0x8D, 0x62, 0x05, 0x00, 0x00
+    };
+    constexpr uintptr_t site = 0x00958F5D;
+    if (std::memcmp(reinterpret_cast<const void*>(site), expected, sizeof(expected)) == 0) {
+        PatchJmp(site, reinterpret_cast<uintptr_t>(&RemoteMagicClawTarget));
+    }
+}
+
+
 void AttachClientHelper() {
+    FixRemoteMagicClawPlayback();
     // EqSlotInfo sEqSlotInfo[BP_PETWEAR] - fix pet equip slot position
     Patch4(0x00C614C0, 110);
     Patch4(0x00C614C4, 89);

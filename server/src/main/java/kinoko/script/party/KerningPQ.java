@@ -1,10 +1,17 @@
 package kinoko.script.party;
 
-import kinoko.packet.field.FieldPacket;
+import kinoko.packet.world.WvsContext;
+import kinoko.bot.KpqCrewService;
+import kinoko.packet.world.MessagePacket;
+import kinoko.server.field.Instance;
+import kinoko.server.field.InstanceFieldStorage;
+import kinoko.provider.ItemProvider;
+import kinoko.world.field.mob.Mob;
 import kinoko.script.UnityPortal;
 import kinoko.script.common.Script;
 import kinoko.script.common.ScriptHandler;
 import kinoko.script.common.ScriptManager;
+import kinoko.script.common.ScriptManagerImpl;
 import kinoko.util.Util;
 import kinoko.world.field.Field;
 import kinoko.world.quest.QuestRecordType;
@@ -15,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class KerningPQ extends ScriptHandler {
     public static final int EXIT = 910340000;
@@ -26,6 +35,9 @@ public final class KerningPQ extends ScriptHandler {
     public static final int BONUS = 910340600;
 
     public static final int COUPON = 4001007;
+    public static final int PASS = 4001008;
+    public static final int PUPPET = 4001454;
+    public static final int LOBBY = 910340700;
 
     @Script("party_exit")
     public static void party_exit(ScriptManager sm) {
@@ -73,37 +85,66 @@ public final class KerningPQ extends ScriptHandler {
         // Lakelis (9020000)
         //   Kerning City : Kerning City (103000000)
         //   Hidden Street : First Time Together Lobby (910340700)
-        if (sm.getFieldId() == 100000200) {
+        if (sm.getFieldId() == 100000200 || sm.getFieldId() == 103000000) {
             // Henesys : Henesys Park
-            if (sm.askYesNo("Would you like to move to First Time Toegether Lobby?")) {
+            if (sm.askMenu(PqDialogue.KPQ_CITY, Map.of(0, "Go to the First Accompaniment Lobby.")) == 0) {
                 sm.setQRValue(QuestRecordType.UnityPortal, "");
                 sm.warp(910340700); // Hidden Street : First Time Together Lobby
             }
         } else if (sm.getFieldId() == 910340700) {
-            final int answer = sm.askMenu("#e<Party Quest: First Time Together>#n\r\nInside, you'll find many obstacles that can only be solved by working with a party. Interested? Then have you #bParty Leader#k talk to me.", Map.of(
-                    0, "I want to do the Party Quest",
-                    1, "I want to hear the details"
+            final int answer = sm.askMenu(PqDialogue.KPQ_LOBBY, Map.of(
+                    0, "I want to do the Party Quest.",
+                    1, "I want to find party members who will join me.",
+                    2, "I want to hear the details.",
+                    3, "\r\n#eBotPQ Menu#n"
             ));
+            if (answer == 3) {
+                int crewChoice = sm.askMenu("#eBotPQ Menu#n\r\nAssemble three prepared party members. You will lead the party, check the puzzles and collect your rewards.\r\n",
+                        Map.of(0, "Assemble a KPQ bot party for me", 1, "Dismiss my KPQ crew"));
+                if (crewChoice == 0) sm.sayOk(KpqCrewService.assemble(sm.getUser()));
+                else if (crewChoice == 1) { KpqCrewService.dismiss(sm.getUser()); sm.sayOk("Your KPQ crew has been dismissed."); }
+                return;
+            }
             if (answer == 0) {
+                if (KpqCrewService.hasCrew(sm.getUser()) && !KpqCrewService.stageAutomationReady()) {
+                    sm.sayOk("This training crew is not ready to complete KPQ yet. Please inspect it in the lobby for now.");
+                    return;
+                }
                 if (!sm.getUser().isPartyBoss()) {
                     sm.sayOk("If you'd like to enter here, the leader of your party will have to talk to me. Talk to your party leader about this.");
                     return;
                 }
-                if (!sm.checkParty(3, 20)) {
-                    sm.sayOk("You cannot enter because your party doesn't have 3 members. You need 3 party members at Lv. 20 or higher to enter, so double-check and talk to me again.");
+                final List<User> members = sm.getField().getUserPool().getPartyMembers(sm.getUser().getPartyId());
+                if (members.size() < 3 || members.size() > 4 || !sm.checkParty(3, member -> member.getLevel() >= 20 && member.getLevel() <= 200 && member.getHp() > 0)) {
+                    sm.sayOk("Bring 3-4 living party members, all at levels 20-200, to this lobby before entering.");
                     return;
                 }
-                sm.removeItem(COUPON);
+                KpqCrewService.prepareEntry(sm.getUser());
+                // Clean every entering member, not just the leader, before creating a fresh run.
+                for (User member : members) {
+                    final ScriptManager memberScript = new ScriptManagerImpl(member, sm.getField(), member, "party1_enter", 9020000);
+                    removeStageItems(memberScript);
+                }
                 sm.partyWarpInstance(List.of(
                         STAGE_1,
                         STAGE_2,
                         STAGE_3,
                         STAGE_4,
-                        STAGE_5,
-                        BONUS
-                ), "st00", EXIT, 60 * 30);
+                        STAGE_5
+                ), "st00", EXIT, 60 * 30, Map.of("required_passes", String.valueOf(members.size() - 1)));
+                final Instance instance = ((InstanceFieldStorage) sm.getUser().getField().getFieldStorage()).getInstance();
+                instance.setRestrictedItems(List.of(COUPON, PASS, PUPPET));
+                instance.setProtectedDrops(List.of(1072369));
+                instance.setVariable("kpq", "1");
+                instance.setVariable("party_id", String.valueOf(sm.getUser().getPartyId()));
+                instance.setVariable("roster", members.stream().map(member -> String.valueOf(member.getCharacterId())).collect(Collectors.joining(",")));
+                instance.setVariable("ready_after", String.valueOf(Instant.now().plusSeconds(5).getEpochSecond()));
+                instance.setUpdateHandler(KerningPQ::updateInstance);
+                instance.setMobDefeatedHandler(mob -> mobDefeated(instance, mob));
             } else if (answer == 1) {
-                sm.sayOk("I'm waiting for brave adventurers. Please work together, share your strengths and wisdom to solve the challenges, and defeat the vicious #rKing Slime#k! King Slime will appear when you complete the challenges. You will need to find the right location and collect Passes corresponding to the answer to the quiz.\r\n\r\n#e - Level:#n 20 or above #r(Recommended Level: 20 - 29)#k\r\n#e - Time Limit:#n 30 min.\r\n#e - Players:#n 3 - 4\r\n#e - Reward:#n #v1072369# #t1072369# #b(Dropped by King Slime)#k\r\nVarious Use, Etc, and Equip items");
+                sm.sayOk("Invite other adventurers to your party here. Otono also offers prepared companions under the BotPQ Menu.");
+            } else if (answer == 2) {
+                sm.sayOk("I'm waiting for brave adventurers. Please work together, share your strengths and wisdom to solve the challenges, and defeat the vicious #rKing Slime#k! King Slime will appear when you complete the challenges. You will need to find the right location and collect Passes corresponding to the answer to the quiz.\r\n\r\n#e - Level:#n 20 - 200 #r(Recommended Level: 20 - 29)#k\r\n#e - Time Limit:#n 30 min.\r\n#e - Players:#n 3 - 4\r\n#e - Reward:#n #v1072369# #t1072369# #b(Dropped by King Slime)#k\r\nVarious Use, Etc, and Equip items");
             }
         }
     }
@@ -129,67 +170,7 @@ public final class KerningPQ extends ScriptHandler {
         final User user = sm.getUser();
         final Field field = sm.getField();
         switch (field.getFieldId()) {
-            case STAGE_1 -> {
-                if (sm.getInstanceVariable("stage1_gate").equals("1")) {
-                    return;
-                }
-                final int requiredPassCount = Math.max(sm.getInstanceUserCount() - 1, 2);
-                if (user.isPartyBoss()) {
-                    // Introduction
-                    if (!sm.getInstanceVariable("stage1_intro").equals("1")) {
-                        sm.setInstanceVariable("stage1_intro", "1");
-                        sm.sayNext("Hello and welcome to the first stage. As you can see, this place is full of Ligators. Each Ligator will drop one #bcoupon#k when defeated. Each party member, except the party leader, must come talk to me and then bring me the exact number of #bcoupons#k that I ask for. Once everyone #bcompletes their individual missions#k, the party can move on to the next stage. Good luck!");
-                        return;
-                    }
-                    // Check pass count
-                    final String count = sm.getInstanceVariable("stage1_count");
-                    final int passCount = Util.isInteger(count) ? Integer.parseInt(count) : 0;
-                    if (passCount < requiredPassCount) {
-                        sm.sayNext("I'm sorry, but at least one party member still hasn't completed their mission. Everyone except the party leader must clear their mission to move on.");
-                        return;
-                    }
-                    // Stage clear
-                    sm.addExpAll(100);
-                    sm.setInstanceVariable("stage1_gate", "1");
-                    sm.broadcastPacket(FieldPacket.setObjectState("gate", 0));
-                    sm.sayNext("Congratulations on clearing this stage! I will create a portal that will lead you to the next one. You're on a time limit, so please hurry! Good luck!");
-                } else {
-                    // Introduction
-                    final String mission = sm.getInstanceVariable(user.getCharacterName());
-                    if (mission.equals("clear")) {
-                        sm.sayNext("You've completed the mission! Please help other party members who may have not completed the mission yet.");
-                        return;
-                    }
-                    if (!Util.isInteger(mission)) {
-                        final int coupons = Util.getRandom(5, 20);
-                        sm.sayNext("First, you must complete the mission I give. Once you complete the mission, you will receive a Pass, which will allow you to pass through.");
-                        sm.setInstanceVariable(user.getCharacterName(), String.valueOf(coupons));
-                        sm.sayBoth(String.format("Your mission is to collect #r%s Coupons#k. You can obtain the coupons by defeating the #rLigators#k found here.", coupons));
-                        return;
-                    }
-                    // Check coupon count
-                    final int couponCount = Integer.parseInt(mission);
-                    if (sm.getItemCount(COUPON) != couponCount || !sm.removeItem(COUPON, couponCount)) {
-                        sm.sayNext(String.format("I'm sorry, but that is not the right number of coupons. Your mission is to collect #r%s Coupons#k. You can obtain the coupons by defeating the #rLigators#k found here.", couponCount));
-                        return;
-                    }
-                    sm.setInstanceVariable(user.getCharacterName(), "clear");
-                    // Check pass count
-                    final String count = sm.getInstanceVariable("stage1_count");
-                    final int passCount = (Util.isInteger(count) ? Integer.parseInt(count) : 0) + 1;
-                    sm.setInstanceVariable("stage1_count", String.valueOf(passCount));
-                    if (passCount < requiredPassCount) {
-                        sm.broadcastScriptProgressMessage(String.format("You've collected %d passes.", passCount));
-                        sm.sayNext("You've completed the mission! Please help other party members who may have not completed the mission yet.");
-                        return;
-                    }
-                    // Stage clear
-                    field.blowWeather(5120017, "All individual missions have been cleared. The Party Leader should come talk to me.", 20);
-                    sm.broadcastScreenEffect("quest/party/clear");
-                    sm.broadcastSoundEffect("Party1/Clear");
-                    sm.sayNext("You've completed the mission! Please tell your party leader to come talk to me to proceed.");
-                }
-            }
+            case STAGE_1 -> stageOne(sm, user.isPartyBoss(), user.getCharacterId());
             case STAGE_2 -> {
                 if (sm.getInstanceVariable("stage2_gate").equals("1") || !user.isPartyBoss()) {
                     return;
@@ -200,11 +181,12 @@ public final class KerningPQ extends ScriptHandler {
                     final List<String> list = new ArrayList<>(List.of("1", "1", "1", "0"));
                     Collections.shuffle(list);
                     sm.setInstanceVariable("stage2_answer", String.join("", list));
-                    sm.sayNext("Hi. Welcome to the 2nd Stage. Next to me, you'll see a number of ropes. Out of these ropes, #b3 are connected to the portal that sends you to the next stage#k. All you need to do is have #b3 party members to find the answer ropes and hang on them#k. BUT, it doesn't count as an answer if you hang on the rope too low; please bring yourself up enough to be counted as a correct answer. Also, only 3 members of your party are allowed on the ropes. Once they are hanging on, the leader of the party must #bdouble-click me to check and see if the answer's correct or not#k. Now, find the right ropes to hang on!");
+                    sm.sayNext(PqDialogue.KPQ_ROPES);
                     return;
                 }
                 // Check answer
                 if (!answer.equals(sm.getAreaCheck())) {
+                    sm.setInstanceVariable("stage2_attempts", String.valueOf(Integer.parseInt(sm.getInstanceVariable("stage2_attempts").isEmpty()?"0":sm.getInstanceVariable("stage2_attempts"))+1));
                     sm.broadcastScreenEffect("quest/party/wrong_kor");
                     sm.broadcastSoundEffect("Party1/Failed");
                     return;
@@ -213,7 +195,7 @@ public final class KerningPQ extends ScriptHandler {
                 sm.setInstanceVariable("stage2_gate", "1");
                 sm.broadcastScreenEffect("quest/party/clear");
                 sm.broadcastSoundEffect("Party1/Clear");
-                sm.broadcastPacket(FieldPacket.setObjectState("gate", 0));
+                sm.setObjectState("gate", 0);
             }
             case STAGE_3 -> {
                 if (sm.getInstanceVariable("stage3_gate").equals("1") || !user.isPartyBoss()) {
@@ -225,18 +207,24 @@ public final class KerningPQ extends ScriptHandler {
                     final List<String> list = new ArrayList<>(List.of("1", "1", "1", "0", "0"));
                     Collections.shuffle(list);
                     sm.setInstanceVariable("stage3_answer", String.join("", list));
-                    sm.sayNext("Hello. Welcome to the 3rd stage. Next to you you'll see barrels with kittens inside on top of the platforms. Out of these platforms, #b3 of them lead to the portals for the next stage. 3 of the party members need to find the correct platform to step on and clear the stage#k.\r\nBUT, you need to stand firm right at the center of it, not standing on the edge, in order to be counted as a correct answer, so make sure to remember that. Also, only 3 members of your party are allowed on the platforms. Once the members are on them, the leader of the party must #bdouble-click me to check and see if the answer's right or not#k. Now, find the correct platforms~!");
-                    sm.sayBoth("If there aren't enough people to stand on the platforms, purchase a #t4001454# #v4001454# from #p9020002# and place it on the correct platform. The platform will mistake #t4001454# for a character. Nifty, huh?");
+                    sm.sayNext(PqDialogue.KPQ_PLATFORMS);
+                    sm.sayBoth(PqDialogue.KPQ_PUPPET);
                     return;
                 }
                 // Check answer
                 final String current = sm.getAreaCheck();
                 if (!answer.equals(current)) {
+                    sm.setInstanceVariable("stage3_attempts", String.valueOf(Integer.parseInt(sm.getInstanceVariable("stage3_attempts").isEmpty()?"0":sm.getInstanceVariable("stage3_attempts"))+1));
                     int count = 0;
                     for (int i = 0; i < answer.length(); i++) {
-                        if (answer.charAt(i) == current.charAt(i)) {
+                        if (answer.charAt(i) == '1' && current.charAt(i) == '1') {
                             count++;
                         }
+                    }
+                    if (!sm.getInstanceVariable("stage3_hint").equals("1")) {
+                        final String hint = "hint" + (answer.indexOf('1') + 1);
+                        sm.setObjectState(hint, 0);
+                        sm.setInstanceVariable("stage3_hint", "1");
                     }
                     sm.broadcastMessage(String.format("Currently, you've selected %d answer platforms", count));
                     sm.broadcastScriptProgressMessage(String.format("Currently, you've selected %d answer platforms", count));
@@ -248,51 +236,188 @@ public final class KerningPQ extends ScriptHandler {
                 sm.setInstanceVariable("stage3_gate", "1");
                 sm.broadcastScreenEffect("quest/party/clear");
                 sm.broadcastSoundEffect("Party1/Clear");
-                sm.broadcastPacket(FieldPacket.setObjectState("gate", 0));
+                sm.setObjectState("gate", 0);
             }
             case STAGE_4 -> {
-                if (sm.getInstanceVariable("stage4_gate").equals("1") || !user.isPartyBoss()) {
+                if (sm.getInstanceVariable("stage4_gate").equals("1")) {
+                    sm.sayOk("Stage Four is clear. Use the portal to reach King Slime.");
+                    return;
+                }
+                if (!user.isPartyBoss()) {
+                    sm.sayOk("Defeat all Curse Eyes. Their passes are not needed; the portal will open when the room is clear.");
                     return;
                 }
                 // Introduction
                 if (!sm.getInstanceVariable("stage4_intro").equals("1")) {
-                    sm.sayNext("TODO"); // TODO
                     sm.setInstanceVariable("stage4_intro", "1");
+                    sm.sayNext("Defeat every Curse Eye in this room. Their passes are not needed; the portal will open when the room is clear.");
                     return;
                 }
                 // Check mob count
                 if (field.getMobPool().getByTemplateId(9300002).isPresent()) {
-                    sm.sayNext("TODO"); // TODO
+                    sm.sayNext("There are still Curse Eyes in this room. Defeat them all before asking me to check again.");
                     return;
                 }
                 // Stage clear
-                sm.sayNext("TODO"); // TODO
-                sm.addExpAll(100);
                 sm.setInstanceVariable("stage4_gate", "1");
-                sm.broadcastPacket(FieldPacket.setObjectState("gate", 0));
+                sm.addExpAll(100);
+                sm.broadcastScreenEffect("quest/party/clear");
+                sm.broadcastSoundEffect("Party1/Clear");
+                sm.setObjectState("gate", 0);
+                sm.broadcastScriptProgressMessage("Stage Four is clear. Proceed through the portal to King Slime.");
+                sm.sayNext("All Curse Eyes have been defeated. The portal to King Slime is open!");
             }
             case STAGE_5 -> {
-                if (sm.getInstanceVariable("stage5_gate").equals("1") || !user.isPartyBoss()) {
+                if (!sm.getInstanceVariable("boss_defeated").equals("1")) {
+                    sm.sayNext(PqDialogue.KPQ_BOSS);
                     return;
                 }
-                // Introduction
-                if (!sm.getInstanceVariable("stage5_intro").equals("1")) {
-                    sm.sayNext("TODO"); // TODO
-                    sm.setInstanceVariable("stage5_intro", "1");
-                    return;
+                final Instance instance = ((InstanceFieldStorage) field.getFieldStorage()).getInstance();
+                if (instance.getRewards().orElseThrow().hasClaimed(user.getCharacterId())) {
+                    sm.sayNext(PqDialogue.KPQ_FINISHED);
+                    sm.warp(EXIT);
+                } else {
+                    sm.sayOk("King Slime has been defeated! Choose a treasure box in the reward window, receive your prize, then speak to me again to leave.");
+                    KerningPQRewards.show(user);
                 }
-                // Check mob count
-                if (field.getMobPool().getByTemplateId(9300003).isPresent()) {
-                    sm.sayNext("TODO"); // TODO
-                    return;
-                }
-                // Stage clear
-                sm.sayNext("TODO"); // TODO
-                sm.addExpAll(100);
-                sm.setInstanceVariable("stage5_gate", "1");
-                sm.broadcastPacket(FieldPacket.setObjectState("gate", 0));
             }
         }
+    }
+
+    /** Physical coupon/pass handoff follows the supplied Hidden Street Stage One guide. */
+    static void stageOne(ScriptManager sm, boolean leader, int characterId) {
+        if (sm.getInstanceVariable("stage1_gate").equals("1")) {
+            sm.sayOk("Stage One is clear. Use the portal to continue.");
+            return;
+        }
+        final String configured = sm.getInstanceVariable("required_passes");
+        final int required = Util.isInteger(configured) ? Integer.parseInt(configured) : Math.max(sm.getInstanceUserCount() - 1, 2);
+        if (leader) {
+            if (!sm.getInstanceVariable("stage1_intro").equals("1")) {
+                sm.setInstanceVariable("stage1_intro", "1");
+                sm.sayNext(PqDialogue.KPQ_FIRST);
+                return;
+            }
+            if (sm.getItemCount(PASS) < required || !sm.removeItem(PASS, required)) {
+                sm.sayNext(PqDialogue.kpqShortPasses(required));
+                return;
+            }
+            // Persist before showing dialogue: cancelling a conversation must not consume passes twice.
+            sm.setInstanceVariable("stage1_gate", "1");
+            sm.addExpAll(100);
+            sm.broadcastScreenEffect("quest/party/clear");
+            sm.broadcastSoundEffect("Party1/Clear");
+            sm.setObjectState("gate", 0);
+            sm.broadcastScriptProgressMessage("Stage One is clear. Proceed through the portal.");
+            sm.sayNext(PqDialogue.kpqPassesClear(required));
+            return;
+        }
+        final String key = "coupon_mission_" + characterId;
+        final String mission = sm.getInstanceVariable(key);
+        if (mission.equals("clear")) {
+            sm.sayOk("You have earned your pass. Give it to your party leader and help the others finish their missions.");
+            return;
+        }
+        if (!Util.isInteger(mission)) {
+            // Retain Kinoko's existing range until a period source establishes the exact distribution.
+            final int coupons = Util.getRandom(5, 20);
+            sm.setInstanceVariable(key, String.valueOf(coupons));
+            sm.sayOk("Please collect exactly " + coupons + " coupons from Ligators and bring them to me for a yellow pass.");
+            return;
+        }
+        final int coupons = Integer.parseInt(mission);
+        if (sm.getItemCount(COUPON) != coupons) {
+            sm.sayOk("I need exactly " + coupons + " coupons. Check your inventory and talk to me again.");
+            return;
+        }
+        if (!sm.canAddItem(PASS, 1)) {
+            sm.sayOk("Please make room in your ETC inventory for your yellow pass. Keep your coupons and talk to me again.");
+            return;
+        }
+        if (!sm.removeItem(COUPON, coupons)) {
+            return;
+        }
+        if (!sm.addItem(PASS, 1)) {
+            sm.addItem(COUPON, coupons);
+            return;
+        }
+        sm.setInstanceVariable(key, "clear");
+        sm.sayOk("Here is your yellow pass. Give it to your party leader, then help the remaining party members.");
+    }
+
+    static void buyPuppet(ScriptManager sm, int price) {
+        if (price < 1 || !sm.canAddItem(PUPPET, 1)) {
+            sm.sayOk("Please make room in your ETC inventory first.");
+            return;
+        }
+        if (!sm.addMoney(-price)) {
+            sm.sayOk("You do not have enough mesos.");
+            return;
+        }
+        if (!sm.addItem(PUPPET, 1)) {
+            sm.addMoney(price);
+            return;
+        }
+        sm.sayOk("Drop the puppet at the center of a platform. It will count as one occupied platform.");
+    }
+
+    private static void updateInstance(Instance instance) {
+        if (!instance.getVariable("boss_defeated").orElse("").equals("1") &&
+                !instance.getVariable("failed").orElse("").equals("1") &&
+                Instant.now().getEpochSecond() >= Long.parseLong(instance.getVariable("ready_after").orElse("0"))) {
+            final int partyId = Integer.parseInt(instance.getVariable("party_id").orElse("0"));
+            final Set<String> roster = Set.of(instance.getVariable("roster").orElse("").split(","));
+            final Set<Integer> present = instance.getUsers().stream()
+                    .filter(user -> roster.contains(String.valueOf(user.getCharacterId())) && user.getPartyId() == partyId && user.getHp() > 0)
+                    .map(User::getCharacterId).collect(Collectors.toSet());
+            if (present.size() >= 3) {
+                if (!instance.getVariable("stage1_gate").orElse("").equals("1")) {
+                    instance.setVariable("required_passes", String.valueOf(present.size() - 1));
+                }
+            } else {
+                instance.setVariable("failed", "1");
+                final Field exit = instance.getChannelServerNode().getFieldById(EXIT).orElseThrow();
+                for (User user : instance.getUsers()) {
+                    user.write(WvsContext.scriptProgressMessage("KPQ ended because fewer than three living party members remain in the run."));
+                    user.warp(exit, exit.getRandomStartPoint().orElseThrow(), false, false);
+                }
+                instance.getChannelServerNode().removeInstance(instance);
+            }
+        }
+    }
+
+    private static void mobDefeated(Instance instance, Mob mob) {
+        if (mob.getField().getFieldId() == STAGE_4 && mob.getTemplateId() == 9300002 &&
+                mob.getField().getMobPool().getByTemplateId(9300002).isEmpty() &&
+                !instance.getVariable("stage4_gate").orElse("").equals("1")) {
+            instance.setVariable("stage4_gate", "1");
+            mob.getField().setObjectState("gate", 0);
+            mob.getField().broadcastPacket(kinoko.packet.field.FieldEffectPacket.screen("quest/party/clear"));
+            mob.getField().broadcastPacket(kinoko.packet.field.FieldEffectPacket.sound("Party1/Clear"));
+            for (User member : instance.getUsers()) {
+                member.addExp(100);
+                member.write(MessagePacket.incExp(100, 0, true, true));
+                member.write(WvsContext.scriptProgressMessage("Stage Four is clear. Proceed through the portal to King Slime."));
+            }
+        }
+        if (mob.getField().getFieldId() == STAGE_5 && mob.getTemplateId() == 9300003) {
+            if (instance.getVariable("boss_defeated").orElse("").equals("1")) return;
+            mob.getField().broadcastPacket(kinoko.packet.field.FieldEffectPacket.screen("quest/party/clear"));
+            mob.getField().broadcastPacket(kinoko.packet.field.FieldEffectPacket.sound("Party1/Clear"));
+            instance.setVariable("boss_defeated", "1");
+            instance.setVariable("stage5_gate", "1");
+            KerningPQRewards.prepare(instance);
+            for (User member : instance.getUsers()) {
+                member.write(WvsContext.scriptProgressMessage("King Slime is defeated. Choose your treasure box, then return to Cloto."));
+                KerningPQRewards.show(member);
+            }
+        }
+    }
+
+    private static void removeStageItems(ScriptManager sm) {
+        sm.removeItem(COUPON);
+        sm.removeItem(PASS);
+        sm.removeItem(PUPPET);
     }
 
     @Script("party1_out")
@@ -317,7 +442,25 @@ public final class KerningPQ extends ScriptHandler {
         //   Hidden Street : First Time Together <Last Stage> (910340501)
         //   Hidden Street : First Time Together <Bonus> (910340600)
         //   Hidden Street : First Time Together <Bonus> (910340601)
-        sm.sayNext("TODO"); // TODO - exit stage, sell 4001454
+        if (sm.getFieldId() == EXIT) {
+            removeStageItems(sm);
+            sm.warp(LOBBY);
+            return;
+        }
+        if (sm.getFieldId() == STAGE_3) {
+            final int price = Math.max(1, ItemProvider.getItemInfo(PUPPET).orElseThrow().getPrice());
+            final int choice = sm.askMenu("A Platform Puppet can stand on a platform while you talk to Cloto.", Map.of(
+                    0, "Buy one Platform Puppet (" + price + " mesos)", 1, "Leave the party quest", 2, "Stay here"));
+            if (choice == 2) return;
+            if (choice == 0) {
+                buyPuppet(sm, price);
+                return;
+            }
+        }
+        if (sm.askYesNo("Would you like to leave First Time Together? Your coupons, passes and puppets will be removed. You cannot return to this attempt.")) {
+            removeStageItems(sm);
+            sm.warp(EXIT);
+        }
     }
 
     @Script("StageMsg_together")
@@ -340,23 +483,21 @@ public final class KerningPQ extends ScriptHandler {
         final Field field = sm.getField();
         switch (field.getFieldId()) {
             case STAGE_1 -> {
-                field.blowWeather(5120017, "Everyone! Talk to Cloto, and defeat Ligators to find the coupons Cloto wants!.", 20);
+                field.blowWeather(5120017, PqDialogue.kpqBubble(STAGE_1), 20);
             }
             case STAGE_2 -> {
-                field.blowWeather(5120017, "Find 3 ropes that can open the door to the next stage, then grab onto them!.", 20);
+                field.blowWeather(5120017, PqDialogue.kpqBubble(STAGE_2), 20);
             }
             case STAGE_3 -> {
-                field.blowWeather(5120017, "Find the 3 Platforms that can open the door to the next stage.", 20);
+                field.blowWeather(5120017, PqDialogue.kpqBubble(STAGE_3), 20);
             }
             case STAGE_4 -> {
-                field.setMobSpawn(false);
-                field.getMobPool().respawnMobs(Instant.MAX);
-                field.blowWeather(5120017, "Eliminate the vicious Curse Eyes!", 20);
+                field.keepInitialMobsOnly();
+                field.blowWeather(5120017, PqDialogue.kpqBubble(STAGE_4), 20);
             }
             case STAGE_5 -> {
-                field.setMobSpawn(false);
-                field.getMobPool().respawnMobs(Instant.MAX);
-                field.blowWeather(5120017, "Defeat King Slime!", 20);
+                field.keepInitialMobsOnly();
+                field.blowWeather(5120017, PqDialogue.kpqBubble(STAGE_5), 20);
             }
         }
     }

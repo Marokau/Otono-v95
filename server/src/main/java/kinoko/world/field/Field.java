@@ -66,6 +66,12 @@ public final class Field {
     private final AffectedAreaPool affectedAreaPool;
 
     private WeatherEffect weatherEffect;
+    private final Map<String, Integer> objectStates = new ConcurrentHashMap<>();
+
+    public void setObjectState(String name, int state) {
+        objectStates.put(name, state);
+        broadcastPacket(FieldPacket.setObjectState(name, state));
+    }
 
     private Instant nextMobRespawn = Instant.now();
     private Instant nextDropExpire = Instant.now();
@@ -264,6 +270,7 @@ public final class Field {
         // Handle instance
         if (fieldStorage instanceof InstanceFieldStorage instanceFieldStorage) {
             final Instance instance = instanceFieldStorage.getInstance();
+            instance.update(now);
             if (now.isAfter(instance.getExpireTime())) {
                 // Remove instance
                 final Optional<Field> returnFieldResult = instance.getChannelServerNode().getFieldById(instance.getReturnMap());
@@ -284,6 +291,13 @@ public final class Field {
     public synchronized void blowWeather(int itemId, String message, int duration) {
         broadcastPacket(FieldPacket.blowWeather(itemId, message));
         weatherEffect = new WeatherEffect(itemId, message, Instant.now().plus(duration, ChronoUnit.SECONDS));
+    }
+
+    public synchronized void keepInitialMobsOnly() {
+        nextMobRespawn = Instant.MAX;
+        if (mobPool.getCount() == 0) {
+            mobPool.respawnMobs(Instant.now());
+        }
     }
 
     public synchronized void setMobSpawn(boolean enabled) {
@@ -363,6 +377,8 @@ public final class Field {
         if (weatherEffect != null) {
             user.write(FieldPacket.blowWeather(weatherEffect.getItemId(), weatherEffect.getMessage()));
         }
+        // Restore opened gates and revealed puzzle hints for later arrivals.
+        objectStates.forEach((name, state) -> user.write(FieldPacket.setObjectState(name, state)));
         // Handle clock
         if (mapInfo.isClock()) {
             final ZonedDateTime now = ZonedDateTime.now(ZoneId.of("UTC"));
@@ -379,11 +395,15 @@ public final class Field {
     }
 
     public synchronized void removeUser(User user) {
+        removeUser(user, true);
+    }
+
+    public synchronized void removeUser(User user, boolean leavingInstance) {
         userPool.removeUser(user);
         // Handle dialogs
         user.closeDialog();
         // Handle instance
-        if (fieldStorage instanceof InstanceFieldStorage instanceFieldStorage) {
+        if (leavingInstance && fieldStorage instanceof InstanceFieldStorage instanceFieldStorage) {
             instanceFieldStorage.getInstance().removeUser(user);
         }
     }
@@ -391,6 +411,7 @@ public final class Field {
     public void reset() {
         assert !hasUser();
         userPool.clear();
+        objectStates.clear();
         mobPool.clear();
         npcPool.clear();
         dropPool.clear();

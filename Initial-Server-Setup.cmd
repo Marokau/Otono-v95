@@ -32,7 +32,7 @@ copy /b /y "%~dp0client\bin\Kinoko.exe" "%OTONO_GAME_DIR%\Kinoko.exe" >nul
 if errorlevel 1 goto failed
 copy /b /y "%~dp0client\bin\Kinoko.dll" "%OTONO_GAME_DIR%\Kinoko.dll" >nul
 if errorlevel 1 goto failed
-echo Official Kinoko v95.1.7 launcher files installed in "%OTONO_GAME_DIR%".
+echo Kinoko launcher and Otono client DLL installed in "%OTONO_GAME_DIR%".
 echo Supply the complete v95 game installation there before starting the server.
 echo Start-Server.cmd will check the required assets before starting.
 echo SQLite is created automatically on the first successful server startup.

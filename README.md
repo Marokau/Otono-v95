@@ -2,11 +2,7 @@
 
 Otono is my personal MapleStory v95 server. I started it to explore this era of MapleStory at my own pace and to get as close as I can to how GMS v95 played at the time, early 2011.
 
-This first release is the foundation. I wanted setup to be simple enough that someone could open the launcher and follow the steps without hunting through several guides. 
-
-I'm working toward guided party quest bot crews, starting with Kerning City. I'll share those as I finish and test them in game.
-
-Many PQ scripts are unfinished so the research part for authenticity to the original time period is the longest task here.
+Kerning City Party Quest is playable with a human party or a dedicated bot crew. Open the party quest guide with `@wherelevel` and speak to Lakelis in the lobby to assemble your crew.
 
 You can check out [Otono v83](https://github.com/Marokau/Otono-v83) for an example of the finished party quest experience.
 
@@ -33,10 +29,14 @@ On later visits, open **Otono.cmd** and use **Start Server** and **Start Game**.
 | Folder | Purpose |
 | --- | --- |
 | `server/` | Java server source, Maven wrapper, data definitions, generated build output and local SQLite database |
-| `client/` | Kinoko launcher/DLL source, pinned native dependencies, and the official prebuilt release in bin/ |
+| `client/` | Kinoko launcher/DLL source, pinned native dependencies, and the bundled Kinoko launcher and Otono-patched DLL in bin/ |
 | `game/` | Install location for your game files. The folder includes setup instructions, and installed files stay local. |
 | `docs/` | Setup provenance and Otono documentation |
 | `launcher/` | Small Windows launcher source and locally generated executable (bin is ignored) |
+
+## Development notes
+
+The [development journal](docs/DEVELOPMENT-JOURNAL.md) records gameplay and client fixes and how they were verified.
 
 ## Foundation
 

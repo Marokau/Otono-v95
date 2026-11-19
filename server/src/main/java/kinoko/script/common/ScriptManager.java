@@ -229,6 +229,8 @@ public interface ScriptManager {
 
     void broadcastPacket(OutPacket outPacket);
 
+    void setObjectState(String name, int state);
+
     void broadcastMessage(String message);
 
     void broadcastScriptProgressMessage(String message);

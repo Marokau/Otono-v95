@@ -18,6 +18,7 @@ import kinoko.server.dialog.Dialog;
 import kinoko.server.dialog.ScriptDialog;
 import kinoko.server.dialog.miniroom.MiniRoom;
 import kinoko.server.guild.GuildRank;
+import kinoko.server.field.InstanceFieldStorage;
 import kinoko.server.node.ChannelServerNode;
 import kinoko.server.node.Client;
 import kinoko.server.node.ServerExecutor;
@@ -87,6 +88,8 @@ public final class User extends Life {
         this.characterData = characterData;
         this.nextCheckItemExpire = Instant.MIN;
     }
+
+    public boolean isAutomated() { return client.isAutomated(); }
 
     public Client getClient() {
         return client;
@@ -786,7 +789,12 @@ public final class User extends Life {
             return;
         }
         if (getField() != null) {
-            getField().removeUser(this);
+            if (getField().getFieldStorage() instanceof InstanceFieldStorage storage &&
+                    destination.getFieldStorage() != storage) {
+                storage.getInstance().clearRestrictedItems(this);
+            }
+            final boolean leavingInstance = getField().getFieldStorage() != destination.getFieldStorage();
+            getField().removeUser(this, leavingInstance);
         }
         setField(destination);
         setX(x);
@@ -821,6 +829,9 @@ public final class User extends Life {
         // Remove user from field
         final Field field = getField();
         if (field != null) {
+            if (field.getFieldStorage() instanceof InstanceFieldStorage storage) {
+                storage.getInstance().clearRestrictedItems(this);
+            }
             field.removeUser(this);
             // Set spawn point
             if (field.hasForcedReturn()) {

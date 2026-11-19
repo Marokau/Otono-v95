@@ -97,7 +97,7 @@ public final class UserPool extends FieldObjectPool<User> {
         // Create field objects for user
         field.getMobPool().forEach((mob) -> {
             user.write(MobPacket.mobEnterField(mob));
-            if (mob.getController() == null) {
+            if (mob.getController() == null && !user.isAutomated()) {
                 mob.setController(user);
                 user.write(MobPacket.mobChangeController(mob, true));
             } else {
@@ -106,7 +106,7 @@ public final class UserPool extends FieldObjectPool<User> {
         });
         field.getNpcPool().forEach((npc) -> {
             user.write(NpcPacket.npcEnterField(npc));
-            if (npc.getController() == null) {
+            if (npc.getController() == null && !user.isAutomated()) {
                 npc.setController(user);
                 user.write(NpcPacket.npcChangeController(npc, true));
             } else {
@@ -295,7 +295,8 @@ public final class UserPool extends FieldObjectPool<User> {
     // CONTROLLER METHODS ----------------------------------------------------------------------------------------------
 
     public void assignController(ControlledObject controlled) {
-        final Optional<User> controllerResult = getNearestUser(controlled); // closest user to controlled object
+        final Optional<User> controllerResult = controlled.getNearestObject(getObjects().stream()
+                .filter(user -> !user.isAutomated()).toList()); // graphical clients own native monster/NPC simulation
         if (controllerResult.isEmpty()) {
             controlled.setController(null);
             return;

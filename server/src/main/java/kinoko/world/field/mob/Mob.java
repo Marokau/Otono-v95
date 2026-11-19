@@ -16,6 +16,8 @@ import kinoko.provider.skill.ElementAttribute;
 import kinoko.provider.skill.SkillInfo;
 import kinoko.provider.skill.SkillStat;
 import kinoko.script.party.HenesysPQ;
+import kinoko.server.ServerConfig;
+import kinoko.server.field.InstanceFieldStorage;
 import kinoko.server.node.ServerExecutor;
 import kinoko.server.packet.OutPacket;
 import kinoko.util.BitFlag;
@@ -44,6 +46,7 @@ import java.util.function.BiPredicate;
 public final class Mob extends Life implements ControlledObject, Encodable {
     private final MobStat mobStat = new MobStat();
     private final Map<MobSkill, Instant> skillCooltimes = new HashMap<>();
+    private int finishingAttackerId;
     private final Map<Integer, Integer> damageDone = new HashMap<>();
     private final MobTemplate template;
     private final MobSpawnPoint spawnPoint;
@@ -367,6 +370,8 @@ public final class Mob extends Life implements ControlledObject, Encodable {
         updateHp(getHp() - actualDamage);
     }
 
+    public int getFinishingAttackerId() { return finishingAttackerId; }
+
     public void damage(User attacker, int totalDamage, int delay) {
         damage(attacker, totalDamage, delay, MobLeaveType.ETC);
     }
@@ -378,6 +383,7 @@ public final class Mob extends Life implements ControlledObject, Encodable {
         updateHp(getHp() - actualDamage);
         // Handle death
         if (getHp() <= 0) {
+            if (actualDamage > 0) finishingAttackerId = attacker.getCharacterId();
             if (getController() != null) {
                 getController().write(changeControllerPacket(false));
             }
@@ -385,6 +391,9 @@ public final class Mob extends Life implements ControlledObject, Encodable {
                 distributeExp();
                 dropRewards(attacker, delay);
                 spawnRevives(delay);
+                if (getField().getFieldStorage() instanceof InstanceFieldStorage storage) {
+                    storage.getInstance().mobDefeated(this);
+                }
             }
             if (template.getHpTagColor() != 0 && template.getHpTagBgColor() != 0) {
                 getField().broadcastPacket(FieldEffectPacket.mobHpTag(getId(), 0, getMaxHp(), template.getHpTagColor(), template.getHpTagBgColor()));
@@ -514,6 +523,11 @@ public final class Mob extends Life implements ControlledObject, Encodable {
                     finalExp = (int) (finalExp * multiplier);
                     finalPartyBonus = (int) (finalPartyBonus * multiplier);
                 }
+            }
+            finalExp = ServerConfig.applyExpRate(finalExp);
+            finalPartyBonus = ServerConfig.applyExpRate(finalPartyBonus);
+            if ((long) finalExp + finalPartyBonus > Integer.MAX_VALUE) {
+                finalPartyBonus = Integer.MAX_VALUE - finalExp;
             }
             if (finalExp + finalPartyBonus > 0) {
                 user.addExp(finalExp + finalPartyBonus);

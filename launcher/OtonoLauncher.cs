@@ -100,7 +100,7 @@ namespace Otono {
             checks = new TableLayoutPanel { BackColor = Color.Transparent, Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, Margin = new Padding(0, 0, 24, 0) };
             checks.RowStyles.Add(new RowStyle(SizeType.Absolute, 32)); for(int i=0;i<3;i++) checks.RowStyles.Add(new RowStyle(SizeType.Absolute, 88)); checks.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); checks.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
             checks.Controls.Add(TextLabel("Ready to play?", 15, ink, true));
-            javaText = AddCheck(checks, "1   Java 21 JDK", 1); gameText = AddCheck(checks, "2   MapleStory v95 game files", 2); setupText = AddCheck(checks, "3   Otono server and Kinoko client", 3);
+            javaText = AddCheck(checks, "1   Java 21 JDK", 1); gameText = AddCheck(checks, "2   MapleStory v95 game files", 2); setupText = AddCheck(checks, "3   Otono server and client", 3);
             checks.Controls.Add(TextLabel("Install your compatible v95 game under game. The installer's game\\MapleStory subfolder works too. Your game is not downloaded by this launcher.", 10, muted, false), 0, 4);
             var openGame = ButtonFor("Open game folder", delegate { OpenFolder(Path.Combine(root, "game")); }, false); openGame.Font = new Font("Segoe UI", 9); checks.Controls.Add(openGame, 0, 5); body.Controls.Add(checks, 0, 0);
             actions = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(20), ColumnCount = 1, RowCount = 8, Margin = Padding.Empty };
@@ -180,7 +180,7 @@ namespace Otono {
             ArrangeActions(install.Ready);
             javaText.Text=java.Message;
             gameText.Text=install.GameReady?"Found in "+(install.GameDirectory.EndsWith("MapleStory",StringComparison.OrdinalIgnoreCase)?"game\\MapleStory":"game"):"Missing: "+String.Join(", ",install.Missing.Take(5))+(install.Missing.Length>5?" ...":"")+". Install the compatible v95 game into game or game\\MapleStory.";
-            setupText.Text=!install.BundleReady?"Bundled client files are missing. Restore client\\bin from your Otono download.":install.Ready?"Server build and Kinoko client files are ready.":!install.Built?"Run Initial Setup to build the server and install the Kinoko client.":"Kinoko files need restoring. Run Repair Setup.";
+            setupText.Text=!install.BundleReady?"Bundled client files are missing. Restore client\\bin from your Otono download.":install.Ready?"Server build and client files are ready.":!install.Built?"Run Initial Setup to build the server and install the Kinoko client.":"Kinoko files need restoring. Run Repair Setup.";
             setupButton.Text=settingUp?"Setup running...":install.Ready?"Repair Setup":"Initial Setup";
             setupButton.Enabled=java.Ready&&install.GameReady&&install.BundleReady&&!settingUp&&!serving&&!login&&!channel;
             serverButton.Enabled=java.Ready&&install.Ready&&!settingUp&&!serving&&!login&&!channel;

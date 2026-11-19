@@ -1,6 +1,7 @@
 package kinoko.world.field.drop;
 
 import kinoko.world.GameConstants;
+import kinoko.server.field.InstanceFieldStorage;
 import kinoko.world.field.FieldObject;
 import kinoko.world.field.FieldObjectImpl;
 import kinoko.world.item.Item;
@@ -57,6 +58,10 @@ public final class Drop extends FieldObjectImpl {
     }
 
     public Instant getExpireTime() {
+        if (item != null && getField() != null && getField().getFieldStorage() instanceof InstanceFieldStorage storage &&
+                storage.getInstance().protectsDrop(item.getItemId())) {
+            return storage.getInstance().getExpireTime();
+        }
         return getCreateTime().plus(GameConstants.DROP_REMAIN_ON_GROUND_TIME, ChronoUnit.SECONDS);
     }
 

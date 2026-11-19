@@ -52,6 +52,16 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 public final class AdminCommands {
+    @Command(value = { "wherelevel", "pqguide" }, description = "Opens the party quest guide.")
+    public static void whereLevel(User user, String[] args) {
+        if (user.isAutomated()) return;
+        if (user.hasDialog()) {
+            user.write(MessagePacket.system("Close the current dialog first."));
+            return;
+        }
+        ScriptDispatcher.startNpcScript(user, user, "otono_wherelevel", 9000000);
+    }
+
     @Command(value = { "commands", "commandguide" }, description = "Opens the in-game command guide.")
     public static void commandGuide(User user, String[] args) {
         if (user.hasDialog()) {

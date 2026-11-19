@@ -1,6 +1,6 @@
 package kinoko.server.netty;
 
-import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.Channel;
 import io.netty.util.AttributeKey;
 import kinoko.server.node.ServerNode;
 import kinoko.server.packet.OutPacket;
@@ -8,9 +8,9 @@ import kinoko.server.packet.OutPacket;
 public abstract class NettyClient {
     public static final AttributeKey<NettyClient> CLIENT_KEY = AttributeKey.valueOf("C");
     private final ServerNode serverNode;
-    private final SocketChannel socketChannel;
+    private final Channel socketChannel;
 
-    public NettyClient(ServerNode serverNode, SocketChannel socketChannel) {
+    public NettyClient(ServerNode serverNode, Channel socketChannel) {
         this.serverNode = serverNode;
         this.socketChannel = socketChannel;
     }
@@ -19,7 +19,7 @@ public abstract class NettyClient {
         return serverNode;
     }
 
-    public SocketChannel getSocketChannel() {
+    public Channel getChannel() {
         return socketChannel;
     }
 
