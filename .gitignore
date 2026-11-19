@@ -1,0 +1,32 @@
+# Private game installation and runtime data
+/game/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.log
+*.hprof
+*.jfr
+.env
+.env.*
+!.env.example
+# Build products and editor files
+**/target/
+**/build/
+.idea/
+.vscode/
+.vs/
+Thumbs.db
+.DS_Store
+
+# Generated Windows launcher
+/launcher/bin/
+
+# Keep the game install instructions in source downloads.
+!/game/
+/game/*
+!/game/README.md
+
+/README.md.old

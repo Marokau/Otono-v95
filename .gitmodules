@@ -1,0 +1,9 @@
+[submodule "client/external/Detours"]
+    path = client/external/Detours
+    url = https://github.com/microsoft/Detours
+[submodule "client/external/StackWalker"]
+    path = client/external/StackWalker
+    url = https://github.com/JochenKalmbach/StackWalker
+[submodule "client/external/WzLib"]
+    path = client/external/WzLib
+    url = https://github.com/iw2d/WzLib.git
