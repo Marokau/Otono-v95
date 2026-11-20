@@ -13,11 +13,15 @@ public final class WhereLevel extends ScriptHandler {
     public static void guide(ScriptManager sm) {
         if (sm.getUser().isAutomated()) return;
         while (true) {
-            int main = sm.askMenu("#eOtono WhereLevel#n\r\nChoose an activity guide.\r\n", Map.of(0,"Party Quests",1,"Close"));
+            int main = sm.askMenu("#eOtono WhereLevel#n\r\nChoose an activity guide.\r\n", Map.of(0,"Party Quests",2,"Interim Job Advancement"));
+            if (main == 2) {
+                JobAdvancement.guide(sm);
+                continue;
+            }
             if (main != 0) return;
             while (true) {
                 int activity = sm.askMenu("#eParty Quests#n\r\nChoose an activity for its summary and entrance teleport.\r\n",
-                        Map.of(0,"Kerning City PQ: Levels 20-200, 3-4 players",1,"Main menu"));
+                        Map.of(0,"Kerning City PQ: Levels 20-200, 3-4 players",1,"\r\nMain Menu"));
                 if (activity == 1) break;
                 int choice = sm.askMenu("#eKerning City Party Quest#n\r\n#bLevels:#k 20-200\r\n#bParty size:#k 3-4\r\n#bTime limit:#k 30 minutes\r\n\r\n" +
                         "Work together on Cloto's coupon missions, rope and platform puzzles, then defeat King Slime. " +

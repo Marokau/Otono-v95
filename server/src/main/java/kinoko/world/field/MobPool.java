@@ -95,9 +95,13 @@ public final class MobPool extends FieldObjectPool<Mob> {
         Collections.shuffle(shuffledSpawnPoints);
 
         final int userCount = field.getUserPool().getCount();
+        final int baseCapacity = getMobCapacity(userCount);
+        final int capacity = field.getFieldStorage() instanceof kinoko.server.field.InstanceFieldStorage
+                ? baseCapacity
+                : (int) Math.min(Math.ceil(baseCapacity * kinoko.server.ServerConfig.MOB_SPAWN_RATE), Integer.MAX_VALUE);
         for (MobSpawnPoint msp : shuffledSpawnPoints) {
             // Check mob capacity
-            if (getCount() >= getMobCapacity(userCount)) {
+            if (getCount() >= capacity) {
                 break;
             }
             // Try spawn mob

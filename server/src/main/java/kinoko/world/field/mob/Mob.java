@@ -584,6 +584,9 @@ public final class Mob extends Life implements ControlledObject, Encodable {
         }
         // Drop probability
         double probability = reward.getProb();
+        if (!reward.isMoney() && reward.getQuestId() == 0) {
+            probability *= isBoss() ? kinoko.server.ServerConfig.BOSS_DROP_RATE : kinoko.server.ServerConfig.DROP_RATE;
+        }
         if (owner.getSecondaryStat().hasOption(CharacterTemporaryStat.ItemUpByItem)) {
             final double multiplier = (owner.getSecondaryStat().getOption(CharacterTemporaryStat.ItemUpByItem).nOption + 100) / 100.0;
             probability = probability * multiplier;
@@ -613,6 +616,7 @@ public final class Mob extends Life implements ControlledObject, Encodable {
                 final double multiplier = (owner.getSecondaryStat().getOption(CharacterTemporaryStat.MesoUpByItem).nOption + 100) / 100.0;
                 money = (int) (money * multiplier);
             }
+            money = (int) Math.min((long) money * kinoko.server.ServerConfig.MESO_RATE, Integer.MAX_VALUE);
             return Optional.of(owner.hasParty() ?
                     Drop.money(DropOwnType.PARTYOWN, this, money, owner.getPartyId()) :
                     Drop.money(DropOwnType.USEROWN, this, money, owner.getCharacterId())

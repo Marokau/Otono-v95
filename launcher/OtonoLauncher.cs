@@ -96,24 +96,47 @@ namespace Otono {
             heading.RowStyles.Add(new RowStyle(SizeType.Absolute, 48)); heading.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             heading.Controls.Add(TextLabel("Otono v95", 28, ink, true)); heading.Controls.Add(TextLabel("Your local MapleStory server", 11, muted, false)); layout.Controls.Add(heading, 0, 0);
             body = new TableLayoutPanel { BackColor = Color.Transparent, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0, 12, 0, 0) };
-            body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 57)); body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 43)); layout.Controls.Add(body, 0, 1);
+            body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 47)); body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 53)); layout.Controls.Add(body, 0, 1);
             checks = new TableLayoutPanel { BackColor = Color.Transparent, Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 6, Margin = new Padding(0, 0, 24, 0) };
-            checks.RowStyles.Add(new RowStyle(SizeType.Absolute, 32)); for(int i=0;i<3;i++) checks.RowStyles.Add(new RowStyle(SizeType.Absolute, 88)); checks.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); checks.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+            checks.RowStyles.Add(new RowStyle(SizeType.Absolute, 32)); for(int i=0;i<3;i++) checks.RowStyles.Add(new RowStyle(SizeType.Absolute, 88)); checks.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); checks.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
             checks.Controls.Add(TextLabel("Ready to play?", 15, ink, true));
             javaText = AddCheck(checks, "1   Java 21 JDK", 1); gameText = AddCheck(checks, "2   MapleStory v95 game files", 2); setupText = AddCheck(checks, "3   Otono server and client", 3);
-            checks.Controls.Add(TextLabel("Install your compatible v95 game under game. The installer's game\\MapleStory subfolder works too. Your game is not downloaded by this launcher.", 10, muted, false), 0, 4);
-            var openGame = ButtonFor("Open game folder", delegate { OpenFolder(Path.Combine(root, "game")); }, false); openGame.Font = new Font("Segoe UI", 9); checks.Controls.Add(openGame, 0, 5); body.Controls.Add(checks, 0, 0);
-            actions = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(20), ColumnCount = 1, RowCount = 8, Margin = Padding.Empty };
+            checks.Controls.Add(TextLabel("Install your v95 game with the game folder button below.\r\nThe installer's game\\MapleStory subfolder works too. Your game is not downloaded by this launcher.", 10, Color.Black, false), 0, 4);
+            var openGame = ButtonFor("Open game folder", delegate { OpenFolder(Path.Combine(root, "game")); }, false); openGame.Font = new Font("Segoe UI", 9); var checklistActions = new TableLayoutPanel { BackColor = Color.Transparent, ColumnCount = 2, RowCount = 1, Dock = DockStyle.Fill, Margin = Padding.Empty };
+            checklistActions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            checklistActions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            var refresh = ButtonFor("Refresh checks", delegate { java=JavaInfo.Inspect(); RefreshState(); }, false);
+            refresh.Font = openGame.Font;
+            checklistActions.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            openGame.Margin = new Padding(0, 3, 3, 3);
+            refresh.Margin = new Padding(3, 3, 0, 3);
+            checklistActions.Controls.Add(openGame, 0, 0);
+            checklistActions.Controls.Add(refresh, 1, 0);
+            checks.Controls.Add(checklistActions, 0, 5); body.Controls.Add(checks, 0, 0);
+            actions = new TableLayoutPanel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(20), ColumnCount = 1, RowCount = 7, Margin = Padding.Empty };
             actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 92));
-            for(int i=0;i<3;i++)actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 54)); actions.RowStyles.Add(new RowStyle(SizeType.Percent,100)); actions.RowStyles.Add(new RowStyle(SizeType.Absolute,40));actions.RowStyles.Add(new RowStyle(SizeType.Absolute,36));
-            actions.Controls.Add(TextLabel("Let's get started",15,ink,true)); nextText = TextLabel("",10,muted,false);actions.Controls.Add(nextText);
+            for(int i=0;i<3;i++)actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 54)); actions.RowStyles.Add(new RowStyle(SizeType.Percent,100)); actions.RowStyles.Add(new RowStyle(SizeType.Absolute,36));
+            actions.Controls.Add(TextLabel("Let's get started",15,ink,true)); nextText = TextLabel("",10,Color.Black,false);actions.Controls.Add(nextText);
             setupButton=ButtonFor("Initial Setup", Setup, true);serverButton=ButtonFor("Start Server", StartServer, false);gameButton=ButtonFor("Start Game", StartGame, false);
-            actions.Controls.Add(setupButton); actions.Controls.Add(serverButton); actions.Controls.Add(gameButton);portText=TextLabel("",10,muted,false);actions.Controls.Add(portText);
-            actions.Controls.Add(ButtonFor("Refresh checks",delegate { java=JavaInfo.Inspect();RefreshState(); },false));
+            actions.Controls.Add(setupButton); actions.Controls.Add(serverButton); actions.Controls.Add(gameButton);portText=TextLabel("",10,Color.Black,false);actions.Controls.Add(portText);
             var links=new FlowLayoutPanel { BackColor=Color.Transparent,Dock=DockStyle.Fill,Margin=Padding.Empty };
             foreach(string name in new[]{"Config","Documentation"}) {var link=new LinkLabel{Text=name,AutoSize=true,Margin=new Padding(0,10,18,0),LinkColor=accent};string choice=name;link.LinkClicked+=delegate{OpenPath(Path.Combine(root,choice=="Config"?"config.yaml":"docs"));};links.Controls.Add(link);}
+            var guide = new LinkLabel { Text = "Launcher Guide", AutoSize = true, Margin = new Padding(0,10,18,0), LinkColor = accent };
+            guide.LinkClicked += delegate {
+                MessageBox.Show(this,
+                    "Refresh checks: reruns the checklist and refreshes the server status.\r\n\r\n" +
+                    "Open game folder: shows where to put the compatible game files.\r\n\r\n" +
+                    "Initial Setup: builds the server and installs the bundled client files.\r\n\r\n" +
+                    "Repair Setup: restores the bundled client files and builds the server if the JAR is missing. Both setup options preserve saved characters.\r\n\r\n" +
+                    "Start Server: starts the local server.\r\n\r\n" +
+                    "Start Game: opens the client once the server is ready.\r\n\r\n" +
+                    "Config: opens the server settings.\r\n\r\n" +
+                    "Documentation: opens the project docs.",
+                    "Launcher Guide", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+            links.Controls.Add(guide);
             actions.Controls.Add(links);body.Controls.Add(actions,1,0);
-            layout.Controls.Add(TextLabel("Closing this launcher leaves a running server open. Close its server window to stop it.",9,muted,false),0,2);
+            layout.Controls.Add(TextLabel("Closing this launcher leaves a running server open.\r\nClose its server window to stop it.",9,Color.Black,false),0,2);
 
             ApplyWallpaper();
             serverProcess=RestoreSession("server");setupProcess=RestoreSession("setup");
@@ -123,40 +146,45 @@ namespace Otono {
             var card=new TableLayoutPanel{BackColor=Color.Transparent,Dock=DockStyle.Fill,ColumnCount=2,RowCount=2,Margin=new Padding(0,3,0,3)};
             card.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,30));card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
             card.RowStyles.Add(new RowStyle(SizeType.Absolute,26));card.RowStyles.Add(new RowStyle(SizeType.Percent,100));
-            var mark=TextLabel("",19,muted,true);mark.Font=new Font("Segoe UI Symbol",19);card.Controls.Add(mark,0,0);
-            card.Controls.Add(TextLabel(title,11,ink,true),1,0);var text=TextLabel("Checking...",9,muted,false);card.Controls.Add(text,1,1);
+            var mark=TextLabel("",19,muted,true);mark.Font=new Font("Segoe UI Symbol",14);mark.Margin=Padding.Empty;mark.TextAlign=ContentAlignment.MiddleCenter;card.Controls.Add(mark,0,0);
+            card.Controls.Add(TextLabel(title,11,ink,true),1,0);var text=TextLabel("Checking...",9,Color.Black,false);card.Controls.Add(text,1,1);
             checkMarks.Add(text,mark);parent.Controls.Add(card,0,row);return text;
         }
         protected override void OnPaintBackground(PaintEventArgs e){
             if(!wallpaperTheme||wallpaper==null){base.OnPaintBackground(e);return;}
-            // Crop only the displayed wallpaper; keep the original asset intact.
-            Rectangle source=wallpaper.Width==1600&&wallpaper.Height==1200
-                ?new Rectangle(10,10,1580,1085):new Rectangle(0,0,wallpaper.Width,wallpaper.Height);
-            // Fit the cropped artwork edge to edge, preserving the logo and both ends of the monster lineup.
-            e.Graphics.DrawImage(wallpaper,ClientRectangle,source,GraphicsUnit.Pixel);
+            e.Graphics.DrawImage(wallpaper, ClientRectangle);
         }
+
         void ApplyWallpaper(){
-            string file=Path.Combine(root,"launcher","assets","background.jpg");
-            if(wallpaper==null&&File.Exists(file)){
-                try{using(var source=Image.FromFile(file))wallpaper=new Bitmap(source);}catch{ }
+            string file = Path.Combine(root, "launcher", "assets", "maplestory_wallpaper_01_1600x1200.jpg");
+            if (wallpaper == null && File.Exists(file)) {
+                try {
+                    using (var source = Image.FromFile(file)) wallpaper = new Bitmap(source);
+                } catch (ArgumentException) { }
+                catch (IOException) { }
             }
             wallpaperTheme=wallpaper!=null;SuspendLayout();
             BackgroundImage=wallpaperTheme?wallpaper:null;BackgroundImageLayout=ImageLayout.Zoom;
             BackColor=wallpaperTheme?Color.FromArgb(232,244,252):Color.FromArgb(246,245,241);
             ClientSize=wallpaperTheme?new Size(1000,760):new Size(850,610);
-            layout.RowStyles[1].SizeType=wallpaperTheme?SizeType.Absolute:SizeType.Percent;layout.RowStyles[1].Height=wallpaperTheme?460:100;
+            layout.RowStyles[1].SizeType=wallpaperTheme?SizeType.Absolute:SizeType.Percent;layout.RowStyles[1].Height=wallpaperTheme?380:100;
             layout.RowStyles[2].SizeType=wallpaperTheme?SizeType.Percent:SizeType.Absolute;layout.RowStyles[2].Height=wallpaperTheme?100:38;
             ((Label)layout.GetControlFromPosition(0,2)).TextAlign=wallpaperTheme?ContentAlignment.TopLeft:ContentAlignment.MiddleLeft;
             heading.Controls[0].ForeColor=wallpaperTheme?Color.White:ink;heading.Controls[1].ForeColor=wallpaperTheme?Color.White:muted;
+            MinimumSize = wallpaperTheme ? new Size(866, 730) : new Size(866, 649);
+            actions.Dock = DockStyle.Fill;
+            actions.Height = 360;
+            actions.Margin = wallpaperTheme ? new Padding(146, 0, 0, 0) : Padding.Empty;
             actions.Padding=wallpaperTheme?new Padding(16):new Padding(20);
-            actions.RowStyles[0].Height=wallpaperTheme?30:34;actions.RowStyles[1].Height=wallpaperTheme?76:92;
-            actions.RowStyles[6].Height=wallpaperTheme?36:40;actions.RowStyles[7].Height=wallpaperTheme?32:36;
+            actions.RowStyles[0].Height=wallpaperTheme?30:34;actions.RowStyles[1].Height=wallpaperTheme?60:92;
+            actions.RowStyles[6].Height=wallpaperTheme?32:36;
             arrangedReady=null;
 
             heading.Padding=wallpaperTheme?new Padding(195,0,0,0):Padding.Empty;
-            checks.BackColor=wallpaperTheme?Color.FromArgb(228,255,255,255):Color.Transparent;
+            checks.BackColor=wallpaperTheme?Color.FromArgb(217,255,255,255):Color.Transparent;
+            for (int row = 1; row <= 3; row++) checks.RowStyles[row].Height = wallpaperTheme ? 66 : 88;
             checks.Padding=wallpaperTheme?new Padding(14,8,14,8):Padding.Empty;
-            actions.BackColor=wallpaperTheme?Color.FromArgb(239,255,255,255):Color.White;
+            actions.BackColor=wallpaperTheme?Color.FromArgb(217,255,255,255):Color.White;
             ResumeLayout(true);Invalidate(true);
         }
         void Mark(Label detail,bool ready){var mark=checkMarks[detail];mark.Text=ready?"\u2713":"\u2717";mark.ForeColor=ready?Color.FromArgb(43,116,74):Color.FromArgb(174,51,46);}
@@ -197,15 +225,15 @@ namespace Otono {
             else if(serving)nextText.Text=login&&channel?"The server is listening. You can start the game now.":"The server is starting. Watch its window for progress.";
             else if(login||channel)nextText.Text="A server is already using Otono's ports. Close it, then start Otono v95 here.";
             else nextText.Text="Start the server first, then open the game. SQLite initializes automatically on first server startup.";
-            portText.Text=serving?(login&&channel?"Server: listening":"Server: starting"):(login||channel?"Server: ports already in use":"Server: offline");
+            portText.Text=serving?(login&&channel?"Server: online":"Server: starting"):(login||channel?"Server: ports already in use":"Server: offline");
         }
         Process RunScript(string name,string arguments) { return LaunchScript(root,name,arguments,ProcessWindowStyle.Normal); }
         internal static Process LaunchScript(string root,string name,string arguments,ProcessWindowStyle style) {
-            string file=Path.Combine(root,name);if(!File.Exists(file))throw new FileNotFoundException("Restore the missing Otono script: "+name);
+            string file=Path.Combine(root,"launcher",name);if(!File.Exists(file))throw new FileNotFoundException("Restore the missing Otono script: "+name);
             return Process.Start(new ProcessStartInfo(Environment.GetEnvironmentVariable("COMSPEC")??"cmd.exe","/d /s /c \"\""+file+"\" "+arguments+"\""){WorkingDirectory=root,UseShellExecute=true,WindowStyle=style});
         }
         void Setup(object sender,EventArgs e){try{setupProcess=RunScript("Initial-Server-Setup.cmd","--no-pause");SaveSession(setupProcess,"setup");RefreshState();}catch(Exception x){Error(x);}}
-        void CheckSetupExit(){if(setupProcess==null||Active(setupProcess))return;int code=setupProcess.ExitCode;setupProcess.Dispose();setupProcess=null;RefreshState();if(code!=0)MessageBox.Show(this,"Setup did not complete. Run Initial-Server-Setup.cmd directly to read the build error, correct it, then retry. Your saved database is not reset.","Setup needs attention",MessageBoxButtons.OK,MessageBoxIcon.Warning);}
+        void CheckSetupExit(){if(setupProcess==null||Active(setupProcess))return;int code=setupProcess.ExitCode;setupProcess.Dispose();setupProcess=null;RefreshState();if(code!=0)MessageBox.Show(this,"Setup did not complete. Run launcher\\Initial-Server-Setup.cmd directly to read the build error, correct it, then retry. Your saved database is not reset.","Setup needs attention",MessageBoxButtons.OK,MessageBoxIcon.Warning);}
         void StartServer(object sender,EventArgs e){RefreshState();if(!serverButton.Enabled)return;try{serverProcess=RunScript("Start-Server.cmd","--no-pause");
             SaveSession(serverProcess,"server");RefreshState();}catch(Exception x){Error(x);}}
         void SaveSession(Process p,string name){File.WriteAllText(Path.Combine(root,"launcher","bin",name+"-session.txt"),p.Id+"|"+p.StartTime.ToUniversalTime().Ticks);}
@@ -257,9 +285,10 @@ namespace Otono {
                 File.Delete(Path.Combine(game,"Map.wz"));Require(!Installation.Inspect(root).Ready,"Missing required asset");
                 string direct=Path.Combine(root,"game");foreach(string name in Installation.Assets)File.WriteAllText(Path.Combine(direct,name),"");foreach(string name in new[]{"Kinoko.exe","Kinoko.dll"})File.WriteAllText(Path.Combine(direct,name),"");
                 Require(Installation.Inspect(root).Ready&&Installation.Inspect(root).GameDirectory==direct,"Direct installation has matching script precedence");
-                File.WriteAllText(Path.Combine(root,"Start-Server.cmd"),"@echo off\r\n> \"%~dp0invoked.txt\" echo %~1\r\nexit /b 0\r\n");
+                Directory.CreateDirectory(Path.Combine(root,"launcher"));
+                File.WriteAllText(Path.Combine(root,"launcher","Start-Server.cmd"),"@echo off\r\n> \"%~dp0invoked.txt\" echo %~1\r\nexit /b 0\r\n");
                 using(var invoked=Launcher.LaunchScript(root,"Start-Server.cmd","--no-pause",ProcessWindowStyle.Hidden)){Require(invoked.WaitForExit(5000)&&invoked.ExitCode==0,"Script invocation");}
-                Require(File.ReadAllText(Path.Combine(root,"invoked.txt")).Trim()=="--no-pause","Script path spaces/ampersand and arguments");
+                Require(File.ReadAllText(Path.Combine(root,"launcher","invoked.txt")).Trim()=="--no-pause","Script path spaces/ampersand and arguments");
                 return 0;
             }finally{Directory.Delete(root,true);}
         }

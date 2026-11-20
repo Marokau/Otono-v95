@@ -1,7 +1,7 @@
 @echo off
 setlocal
-cd /d "%~dp0"
-set "OTONO_GAME_DIR=%~dp0game"
+cd /d "%~dp0..\"
+set "OTONO_GAME_DIR=%~dp0..\game"
 if not exist "%OTONO_GAME_DIR%\MapleStory.exe" if exist "%OTONO_GAME_DIR%\MapleStory\MapleStory.exe" set "OTONO_GAME_DIR=%OTONO_GAME_DIR%\MapleStory"
 if not exist "%OTONO_GAME_DIR%\MapleStory.exe" goto missing
 if not exist "%OTONO_GAME_DIR%\Kinoko.exe" goto missing

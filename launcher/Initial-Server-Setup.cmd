@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0..\"
 set "OTONO_NO_PAUSE="
 set "OTONO_REBUILD="
 for %%A in (%*) do (
@@ -8,9 +8,9 @@ for %%A in (%*) do (
     if /i "%%~A"=="--rebuild" set "OTONO_REBUILD=1"
 )
 if not exist "game" mkdir "game"
-set "OTONO_GAME_DIR=%~dp0game"
+set "OTONO_GAME_DIR=%~dp0..\game"
 if not exist "%OTONO_GAME_DIR%\MapleStory.exe" if exist "%OTONO_GAME_DIR%\MapleStory\MapleStory.exe" set "OTONO_GAME_DIR=%OTONO_GAME_DIR%\MapleStory"
-if exist "%~dp0server\target\server.jar" if not defined OTONO_REBUILD goto alreadybuilt
+if exist "%~dp0..\server\target\server.jar" if not defined OTONO_REBUILD goto alreadybuilt
 if defined JAVA_HOME if exist "%JAVA_HOME%\bin\javac.exe" set "PATH=%JAVA_HOME%\bin;%PATH%"
 where java >nul 2>&1
 if errorlevel 1 goto missingjava
@@ -20,17 +20,17 @@ echo Building the Kinoko-based Otono v95 server. Stop it before rebuilding.
 echo The first build downloads Maven and Java dependencies. Internet is required.
 echo Setup skips tests because some upstream tests require game assets.
 java -version
-cd /d "%~dp0server"
+cd /d "%~dp0..\server"
 call mvnw.cmd -B -ntp -DskipTests clean package
 if errorlevel 1 goto failed
 echo.
 echo Server build complete: server\target\server.jar
 :installclient
-if not exist "%~dp0client\bin\Kinoko.exe" goto missingclient
-if not exist "%~dp0client\bin\Kinoko.dll" goto missingclient
-copy /b /y "%~dp0client\bin\Kinoko.exe" "%OTONO_GAME_DIR%\Kinoko.exe" >nul
+if not exist "%~dp0..\client\bin\Kinoko.exe" goto missingclient
+if not exist "%~dp0..\client\bin\Kinoko.dll" goto missingclient
+copy /b /y "%~dp0..\client\bin\Kinoko.exe" "%OTONO_GAME_DIR%\Kinoko.exe" >nul
 if errorlevel 1 goto failed
-copy /b /y "%~dp0client\bin\Kinoko.dll" "%OTONO_GAME_DIR%\Kinoko.dll" >nul
+copy /b /y "%~dp0..\client\bin\Kinoko.dll" "%OTONO_GAME_DIR%\Kinoko.dll" >nul
 if errorlevel 1 goto failed
 echo Kinoko launcher and Otono client DLL installed in "%OTONO_GAME_DIR%".
 echo Supply the complete v95 game installation there before starting the server.

@@ -13,6 +13,10 @@ public final class ServerConfig {
     public static final boolean AUTO_CREATE_ACCOUNT = Settings.get("AUTO_CREATE_ACCOUNT", true);
     public static final boolean REQUIRE_SECONDARY_PASSWORD = Settings.get("REQUIRE_SECONDARY_PASSWORD", true);
     public static final int EXP_RATE = Settings.range("EXP_RATE", 1, 1, Integer.MAX_VALUE);
+    public static final int DROP_RATE = Settings.range("DROP_RATE", 1, 1, Integer.MAX_VALUE);
+    public static final int BOSS_DROP_RATE = Settings.range("BOSS_DROP_RATE", 1, 1, Integer.MAX_VALUE);
+    public static final int MESO_RATE = Settings.range("MESO_RATE", 1, 1, Integer.MAX_VALUE);
+    public static final double MOB_SPAWN_RATE = spawnRate();
     public static final String WZ_DIRECTORY = Settings.get("WZ_DIRECTORY", "wz");
     public static final String DATA_DIRECTORY = Settings.get("DATA_DIRECTORY", "data");
 
@@ -28,6 +32,14 @@ public final class ServerConfig {
     public static final String COMMAND_PREFIX = Settings.get("COMMAND_PREFIX", "!");
     public static final boolean DEBUG_MODE = Settings.get("DEBUG_MODE", true);
     public static final boolean PLAIN_TRAFFIC = Settings.get("PLAIN_TRAFFIC", false);
+    private static double spawnRate() {
+        final double rate = Double.parseDouble(Settings.get("MOB_SPAWN_RATE", "1"));
+        if (!Double.isFinite(rate) || rate < 1) {
+            throw new IllegalArgumentException("MOB_SPAWN_RATE must be a finite number of at least 1");
+        }
+        return rate;
+    }
+
     private static int inventorySlots() {
         final int slots = Settings.range("INVENTORY_BASE_SLOTS", 24, 4, GameConstants.INVENTORY_SLOT_MAX);
         if (slots % 4 != 0) {

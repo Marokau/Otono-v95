@@ -699,9 +699,10 @@ public final class AdminCommands {
             return;
         }
         final CharacterStat cs = user.getCharacterStat();
+        if (cs.getLevel() != level) cs.setExp(0);
         cs.setLevel((short) level);
         user.validateStat();
-        user.write(WvsContext.statChanged(Stat.LEVEL, (byte) cs.getLevel(), true));
+        user.write(WvsContext.statChanged(Map.of(Stat.LEVEL, (byte) cs.getLevel(), Stat.EXP, cs.getExp()), true));
         user.getConnectedServer().notifyUserUpdate(user);
     }
 

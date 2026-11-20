@@ -1,3 +1,9 @@
 WORLD_NAME: Otono
 COMMAND_PREFIX: "@"
-EXP_RATE: 1
+EXP_RATE: 1                 # Monster-kill EXP, including the existing party bonus. Does not multiply quest rewards.
+MESO_RATE: 1                 # Amount of mesos in monster drops.
+
+DROP_RATE: 1                 # Ordinary monster item drop chance. Quest-linked drops keep their original chance.
+BOSS_DROP_RATE: 1            # Boss item drop chance. Used in place of DROP_RATE.
+
+MOB_SPAWN_RATE: 1            # Normal-map capacity (e.g. 1.5), limited by existing spawn points. PQ instances keep their normal capacity.

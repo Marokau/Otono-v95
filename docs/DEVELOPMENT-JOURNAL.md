@@ -39,3 +39,11 @@ This journal records fixes that changed gameplay or client behavior and how they
 - **Coupon chase and pickup.** The crew cancels its route when the coupon disappears and avoids sending more than one bot after the same drop. The final in-game audit confirmed KPQ completion. Each movement case was not individually rechecked in that run.
 
 See [KPQ implementation notes](KPQ.md) for activity-specific details.
+
+## v0.2.1 · Launcher and interim progression
+
+The launcher gained an inline guide, clearer status text, and a more compact layout. Its helper scripts moved under launcher while Otono.cmd remains the entry point.
+
+The GM level command could leave EXP from the old level displayed on the bar. Changing the level now resets EXP and sends the new level and EXP together.
+
+The interim advancement guide uses the native stat-grant routine for missing paths. Client checks covered first-job Thief and early Dual Blade, including 62 unspent SP at level 30 under current rules when leveled through the normal routine. Later advancement awards and quest-dependent skill unlocks still need auditing.

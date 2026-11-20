@@ -16,7 +16,7 @@ The scan checks required filenames, not WZ contents or a cryptographically verif
 
 - The checklist refreshes automatically; Refresh checks also reprobes Java.
 - Repair Setup skips an existing server build and restores the two bundled client files. It does not reset the SQLite database. It will overwrite locally customized Kinoko.exe/Kinoko.dll with the bundled release, just as initial setup does.
-- Source rebuilding remains an intentional developer action: stop v95, then run Initial-Server-Setup.cmd --rebuild. Repair Setup is not a source rebuild button.
+- Source rebuilding remains an intentional developer action: stop v95, then run launcher/Initial-Server-Setup.cmd --rebuild. Repair Setup is not a source rebuild button.
 - Server/setup run in their own console windows. Closing the launcher does not stop those processes. Reopening recognizes its own still-running process using a local PID/start-time record; it does not identify an unrelated server as Otono merely because a port is open.
 - A busy 8484 or 8585 blocks another server launch and setup repair. Close the conflicting server first. v83 and v95 use overlapping default ports.
 - Stop the server through its console. No force-kill or database-delete button is provided.
@@ -32,4 +32,4 @@ The generated launcher supports --self-test for isolated checks: empty install, 
 
 
 
-Start Game now closes the launcher when Start-Game.cmd reports a successful launch request. The server console/process remains open and is recognized when the launcher is reopened. Launch errors leave the launcher open with a message. This checks dispatch success, not whether a full game login completes.
+Start Game now closes the launcher when launcher/Start-Game.cmd reports a successful launch request. The server console/process remains open and is recognized when the launcher is reopened. Launch errors leave the launcher open with a message. This checks dispatch success, not whether a full game login completes.
