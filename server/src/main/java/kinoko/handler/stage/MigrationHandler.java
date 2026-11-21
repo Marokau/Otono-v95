@@ -287,6 +287,7 @@ public final class MigrationHandler {
                 handleRevive(user, currentField, false);
                 return;
             }
+            if (kinoko.script.party.LudibriumPQ.instance(user).isPresent()) { user.dispose(); return; }
             // Transfer field by client request : ReservedEffect, CField::OBSTACLE, /m <map ID> - TODO: disallow /m command for non-GM
             if (!isWhitelistedTransferField(currentField.getFieldId(), targetFieldId)) {
                 log.warn("Received non-whitelisted transfer field request from {} to {}", currentField.getFieldId(), targetFieldId);
@@ -296,6 +297,7 @@ public final class MigrationHandler {
         }
         // Enter portal to next field
         final Optional<PortalInfo> portalResult = currentField.getPortalByName(portalName);
+        if (portalResult.isPresent() && kinoko.script.party.LudibriumPQ.handlePortal(user, portalResult.get())) return;
         if (portalResult.isEmpty() || !portalResult.get().hasDestinationField()) {
             log.error("Tried to use portal : {} on field ID : {}", portalName, currentField.getFieldId());
             user.dispose();

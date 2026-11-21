@@ -116,6 +116,8 @@ public final class DropPool extends FieldObjectPool<Drop> {
             return;
         }
 
+        if (kinoko.script.party.LudibriumPQ.pickUpPass(user, drop, leaveType, petIndex)) return;
+
         // Check if drop can be added to inventory
         final InventoryManager im = user.getInventoryManager();
         if (drop.isMoney()) {

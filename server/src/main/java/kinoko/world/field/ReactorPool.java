@@ -3,6 +3,7 @@ package kinoko.world.field;
 import kinoko.packet.field.FieldPacket;
 import kinoko.script.common.ScriptDispatcher;
 import kinoko.script.party.HenesysPQ;
+import kinoko.script.party.LudibriumPQ;
 import kinoko.world.GameConstants;
 import kinoko.world.field.reactor.Reactor;
 import kinoko.world.user.User;
@@ -33,14 +34,19 @@ public final class ReactorPool extends FieldObjectPool<Reactor> {
 
     public synchronized void hitReactor(User user, Reactor reactor, int delay) {
         // Register reactor expiry
-        if (reactor.getReactorTime() > 0) {
+        if (!LudibriumPQ.isPassBox(reactor) && reactor.getReactorTime() > 0) {
             hitReactors.put(reactor, Instant.now().plus(reactor.getReactorTime(), ChronoUnit.SECONDS));
         }
-        if (reactor.getTimeOut() > 0) {
+        if (!LudibriumPQ.isPassBox(reactor) && reactor.getTimeOut() > 0) {
             hitReactors.put(reactor, Instant.now().plus(reactor.getTimeOut(), ChronoUnit.MILLIS));
         }
         // Broadcast reactor changing state
         field.broadcastPacket(FieldPacket.reactorChangeState(reactor, delay, 0, GameConstants.REACTOR_END_DELAY));
+        // Native LPQ pass boxes are one-use for the instance, not one-second respawning pass farms.
+        if (LudibriumPQ.isPassBox(reactor)) {
+            LudibriumPQ.passBoxBroken(user, reactor);
+            return;
+        }
         // Dispatch reactor script
         if (reactor.isLastState() && reactor.hasAction()) {
             ScriptDispatcher.startReactorScript(user, reactor, reactor.getAction());

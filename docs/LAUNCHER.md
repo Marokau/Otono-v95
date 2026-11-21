@@ -33,3 +33,11 @@ The generated launcher supports --self-test for isolated checks: empty install, 
 
 
 Start Game now closes the launcher when launcher/Start-Game.cmd reports a successful launch request. The server console/process remains open and is recognized when the launcher is reopened. Launch errors leave the launcher open with a message. This checks dispatch success, not whether a full game login completes.
+
+## Release updates
+
+Close the game and server, then choose **Check for Updates**. The launcher checks the latest stable Otono v95 release on GitHub and asks for confirmation. It verifies the release asset SHA-256 and individual payload files before replacing changed release files. The patch includes the built server JAR. Updated bundled client binaries are also installed in the detected game folder.
+
+For the first update from v0.2.1, extract the release's **Otono-v95-Updater.zip** into the existing Otono folder and run **launcher/Check-for-Updates.cmd**. Future installations have the button. SQLite saves, config.yaml, installed game assets and personal additions are outside the patch. A conflicting local edit stops the update before installation. If interrupted, run the same updater to recover before playing.
+
+For maintainers, run **python launcher/packaging/build-patch.py v0.2.1 v0.3.0 OUTPUT_FOLDER** in the publication checkout after tagging the reviewed release. It builds the JAR from the target tag and creates the patch and bootstrap ZIPs. Attach both assets before marking the release latest. Generate a separate patch for each supported starting version.

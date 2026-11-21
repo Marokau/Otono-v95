@@ -38,7 +38,8 @@ public final class KerningPQRewards {
                 .collect(Collectors.toSet());
         var prizes = new ArrayList<InstanceRewards.Prize>();
         for (int box = 0; box < 6; box++) {
-            int itemId = Util.getRandomFromCollection(ITEM_IDS).orElseThrow();
+            // LPQ's six-box UI is verified on the July 2011 video. Its exact prize weights remain unconfirmed.
+            int itemId = Util.getRandomFromCollection(instance.getVariable("lpq").orElse("").equals("1")?LudibriumPQ.REWARD_ITEMS:ITEM_IDS).orElseThrow();
             if (ItemProvider.getItemInfo(itemId).isEmpty()) throw new IllegalStateException("Missing PQ prize " + itemId);
             prizes.add(new InstanceRewards.Prize(itemId, 1));
         }
@@ -49,7 +50,8 @@ public final class KerningPQRewards {
         if (!(user.getField().getFieldStorage() instanceof InstanceFieldStorage storage)) return Optional.empty();
         Instance instance = storage.getInstance();
         boolean kpq=instance.getVariable("kpq").orElse("").equals("1") && user.getFieldId()==KerningPQ.STAGE_5;
-        if (!kpq || user.getHp()<=0 ||
+        boolean lpq=instance.getVariable("lpq").orElse("").equals("1") && user.getFieldId()==LudibriumPQ.BOSS;
+        if ((!kpq && !lpq) || user.getHp()<=0 ||
                 !instance.getVariable("boss_defeated").orElse("").equals("1") ||
                 instance.getVariable("failed").orElse("").equals("1") || Instant.now().isAfter(instance.getExpireTime()) ||
                 user.getPartyId() != Integer.parseInt(instance.getVariable("party_id").orElse("0"))) return Optional.empty();
@@ -94,10 +96,12 @@ public final class KerningPQRewards {
             user.write(PqRewardPacket.claimFailed()); // the native window retries after its normal delay
             return;
         }
-        var sm = new ScriptManagerImpl(user, user.getField(), user, "party1_play", 9020001);
+        boolean lpq=instance.getVariable("lpq").orElse("").equals("1");
+        var sm = new ScriptManagerImpl(user, user.getField(), user, lpq?"party2_play":"party1_play", lpq?2040044:9020001);
         var result = rewards.claim(user.getCharacterId(), sm::addItem);
         if (result == InstanceRewards.Claim.GRANTED) {
-            sm.addExp(100); // Final award calibration remains provisional.
+            if(lpq) LudibriumPQ.recordCompletion(user,instance);
+            else sm.addExp(100);
             user.write(PqRewardPacket.received(rewards.prizes()));
         } else if (result == InstanceRewards.Claim.ALREADY_CLAIMED) {
             user.write(PqRewardPacket.received(rewards.prizes())); // replay UI result, never the inventory grant

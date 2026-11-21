@@ -57,6 +57,7 @@ public final class MobHandler {
             return;
         }
         final Mob mob = mobResult.get();
+        if (mob.hasCrewCombatController()) return; // A move from the former controller can still be in flight.
         if (mob.getController() != user) {
             field.getUserPool().setController(mob, user);
         }
@@ -126,6 +127,7 @@ public final class MobHandler {
             return;
         }
         final Mob mob = mobResult.get();
+        if (mob.hasCrewCombatController()) return;
         if (!mob.getTemplate().isPickUpDrop() && !mob.getTemplate().isFirstAttack()) {
             log.error("Received invalid MobApplyCtrl request for mob template ID : {}", mob.getTemplateId());
         }
@@ -271,7 +273,7 @@ public final class MobHandler {
             final int slv = (mai.targetInfo >> 8) & 0xFF;
             final int option = (mai.targetInfo >> 16) & 0xFFFF; // tDelay
 
-            final Optional<MobSkill> mobSkillResult = mob.getSkill(skillId);
+            final Optional<MobSkill> mobSkillResult = mob.getSkill(skillId, slv);
             if (mobSkillResult.isEmpty()) {
                 log.error("{} : Could not resolve mob skill with ID {}", mob, skillId);
                 return;

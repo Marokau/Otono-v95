@@ -34,4 +34,17 @@ class WhereLevelTest {
             assertEquals(3,menus.get());assertEquals(List.of(910340700),destinations);
         } finally { field.getFieldEventFuture().cancel(true);channel.finishAndReleaseAll(); }
     }
+    @Test void lpqGuideTeleportsOnlyToTheNormalEntrance() {
+        MapProvider.initialize();var field=new Field(null,MapProvider.getMapInfo(103000000).orElseThrow());
+        var data=new CharacterData(1);var cs=new CharacterStat();cs.setHp(100);data.setCharacterStat(cs);
+        var channel=new CrewChannel(null);var user=new User(new Client(null,channel),data);var step=new AtomicInteger();var destinations=new ArrayList<Integer>();
+        ScriptManager sm=(ScriptManager)Proxy.newProxyInstance(ScriptManager.class.getClassLoader(),new Class[]{ScriptManager.class},(proxy,method,args)->switch(method.getName()){
+            case "getUser"->user;case "getField"->field;
+            case "askMenu"->{int current=step.getAndIncrement();yield current==1?1:0;}
+            case "warp"->{destinations.add((int)args[0]);yield null;}
+            default->throw new AssertionError(method.getName());
+        });
+        try{WhereLevel.guide(sm);assertEquals(List.of(221023300),destinations);assertEquals(3,step.get());}
+        finally{field.getFieldEventFuture().cancel(true);channel.finishAndReleaseAll();}
+    }
 }

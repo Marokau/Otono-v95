@@ -2,7 +2,7 @@
 
 Otono is my personal MapleStory v95 server. I started it to explore this era of MapleStory at my own pace and to get as close as I can to how GMS v95 played at the time, early 2011.
 
-Kerning City Party Quest is playable with a human party or a dedicated bot crew. Open the party quest guide with `@wherelevel` and speak to Lakelis in the lobby to assemble your crew.
+Kerning City PQ and Ludibrium PQ are playable with a human party or a dedicated bot crew. Open `@wherelevel` and choose **Party Quests** to reach either entrance. Speak to Lakelis for Kerning or the Red Sign for Ludibrium.
 
 You can check out [Otono v83](https://github.com/Marokau/Otono-v83) for an example of the finished party quest experience.
 

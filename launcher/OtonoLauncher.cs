@@ -65,7 +65,8 @@ namespace Otono {
         JavaInfo java;
         Installation install;
         readonly Label javaText, gameText, setupText, portText, nextText;
-        readonly Button setupButton, serverButton, gameButton;
+        readonly Button setupButton, serverButton, gameButton, updateButton;
+        readonly TableLayoutPanel maintenance;
         readonly Timer timer = new Timer();
         readonly Dictionary<Label,Label> checkMarks = new Dictionary<Label,Label>();
         TableLayoutPanel actions;
@@ -73,7 +74,7 @@ namespace Otono {
         Image wallpaper;
         bool wallpaperTheme;
         bool? arrangedReady;
-        Process setupProcess, serverProcess;
+        Process setupProcess, serverProcess, updateProcess;
         bool gameLaunching;
         readonly Color ink = Color.FromArgb(34, 48, 60), muted = Color.FromArgb(88, 99, 108), accent = Color.FromArgb(168, 75, 34);
         static Label TextLabel(string text, int size, Color color, bool bold) {
@@ -118,7 +119,15 @@ namespace Otono {
             for(int i=0;i<3;i++)actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 54)); actions.RowStyles.Add(new RowStyle(SizeType.Percent,100)); actions.RowStyles.Add(new RowStyle(SizeType.Absolute,36));
             actions.Controls.Add(TextLabel("Let's get started",15,ink,true)); nextText = TextLabel("",10,Color.Black,false);actions.Controls.Add(nextText);
             setupButton=ButtonFor("Initial Setup", Setup, true);serverButton=ButtonFor("Start Server", StartServer, false);gameButton=ButtonFor("Start Game", StartGame, false);
-            actions.Controls.Add(setupButton); actions.Controls.Add(serverButton); actions.Controls.Add(gameButton);portText=TextLabel("",10,Color.Black,false);actions.Controls.Add(portText);
+            updateButton=ButtonFor("Check for Updates", CheckUpdates, false);
+            updateButton.Font=new Font("Segoe UI",9,FontStyle.Bold);
+            maintenance=new TableLayoutPanel{Dock=DockStyle.Fill,BackColor=Color.Transparent,ColumnCount=2,RowCount=1,Margin=Padding.Empty};
+            maintenance.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+            maintenance.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));
+            maintenance.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));
+            setupButton.Margin=new Padding(0,5,3,5);updateButton.Margin=new Padding(3,5,0,5);
+            maintenance.Controls.Add(setupButton,0,0);maintenance.Controls.Add(updateButton,1,0);
+            actions.Controls.Add(maintenance); actions.Controls.Add(serverButton); actions.Controls.Add(gameButton);portText=TextLabel("",10,Color.Black,false);actions.Controls.Add(portText);
             var links=new FlowLayoutPanel { BackColor=Color.Transparent,Dock=DockStyle.Fill,Margin=Padding.Empty };
             foreach(string name in new[]{"Config","Documentation"}) {var link=new LinkLabel{Text=name,AutoSize=true,Margin=new Padding(0,10,18,0),LinkColor=accent};string choice=name;link.LinkClicked+=delegate{OpenPath(Path.Combine(root,choice=="Config"?"config.yaml":"docs"));};links.Controls.Add(link);}
             var guide = new LinkLabel { Text = "Launcher Guide", AutoSize = true, Margin = new Padding(0,10,18,0), LinkColor = accent };
@@ -128,6 +137,7 @@ namespace Otono {
                     "Open game folder: shows where to put the compatible game files.\r\n\r\n" +
                     "Initial Setup: builds the server and installs the bundled client files.\r\n\r\n" +
                     "Repair Setup: restores the bundled client files and builds the server if the JAR is missing. Both setup options preserve saved characters.\r\n\r\n" +
+                    "Check for Updates: checks GitHub and asks before installing a release patch. Close the game and server first.\r\n\r\n" +
                     "Start Server: starts the local server.\r\n\r\n" +
                     "Start Game: opens the client once the server is ready.\r\n\r\n" +
                     "Config: opens the server settings.\r\n\r\n" +
@@ -140,7 +150,7 @@ namespace Otono {
 
             ApplyWallpaper();
             serverProcess=RestoreSession("server");setupProcess=RestoreSession("setup");
-            timer.Interval=2000;timer.Tick+=delegate{CheckSetupExit();RefreshState();};timer.Start(); RefreshState();
+            timer.Interval=2000;timer.Tick+=delegate{CheckSetupExit();CheckUpdateExit();if(!IsDisposed)RefreshState();};timer.Start(); RefreshState();
         }
         Label AddCheck(TableLayoutPanel parent,string title,int row) {
             var card=new TableLayoutPanel{BackColor=Color.Transparent,Dock=DockStyle.Fill,ColumnCount=2,RowCount=2,Margin=new Padding(0,3,0,3)};
@@ -191,7 +201,7 @@ namespace Otono {
         void ArrangeActions(bool ready){
             if(arrangedReady==ready)return;arrangedReady=ready;
             actions.SuspendLayout();
-            actions.SetCellPosition(setupButton,new TableLayoutPanelCellPosition(0,ready?5:2));
+            actions.SetCellPosition(maintenance,new TableLayoutPanelCellPosition(0,ready?5:2));
             actions.SetCellPosition(serverButton,new TableLayoutPanelCellPosition(0,ready?2:3));
             actions.SetCellPosition(gameButton,new TableLayoutPanelCellPosition(0,ready?3:4));
             actions.SetCellPosition(portText,new TableLayoutPanelCellPosition(0,ready?4:5));
@@ -211,6 +221,7 @@ namespace Otono {
             setupText.Text=!install.BundleReady?"Bundled client files are missing. Restore client\\bin from your Otono download.":install.Ready?"Server build and client files are ready.":!install.Built?"Run Initial Setup to build the server and install the Kinoko client.":"Kinoko files need restoring. Run Repair Setup.";
             setupButton.Text=settingUp?"Setup running...":install.Ready?"Repair Setup":"Initial Setup";
             setupButton.Enabled=java.Ready&&install.GameReady&&install.BundleReady&&!settingUp&&!serving&&!login&&!channel;
+            updateButton.Enabled=!settingUp&&!serving&&!login&&!channel;
             serverButton.Enabled=java.Ready&&install.Ready&&!settingUp&&!serving&&!login&&!channel;
             gameButton.Enabled=java.Ready&&install.Ready&&!settingUp&&!gameLaunching&&serving&&login&&channel;
             gameButton.BackColor = gameButton.Enabled ? Color.FromArgb(38, 112, 69) : Color.FromArgb(232, 231, 227);
@@ -218,7 +229,11 @@ namespace Otono {
             gameButton.Cursor = gameButton.Enabled ? Cursors.Hand : Cursors.Default;
             gameButton.Text = gameLaunching ? "Opening game..." : gameButton.Enabled ? "Start Game (Ready)" : "Start Game";
             serverButton.Text=serving?"Server running":"Start Server";
-            if(settingUp)nextText.Text="Setup is running in its own window. The first build downloads Maven and dependencies. Keep that window open.";
+            if(Active(updateProcess)){
+                setupButton.Enabled=serverButton.Enabled=gameButton.Enabled=updateButton.Enabled=false;
+                nextText.Text="Checking for an update. Follow the update window to continue.";
+            }
+            else if(settingUp)nextText.Text="Setup is running in its own window. The first build downloads Maven and dependencies. Keep that window open.";
             else if(!java.Ready)nextText.Text="Install a Java 21 JDK, then reopen the launcher. Maven and SQLite need no separate installation.";
             else if(!install.GameReady)nextText.Text="Install your game files into game, then refresh these checks.";
             else if(!install.Ready)nextText.Text="Click Initial Setup to prepare Otono. Keep your internet connection on during first setup.";
@@ -231,6 +246,17 @@ namespace Otono {
         internal static Process LaunchScript(string root,string name,string arguments,ProcessWindowStyle style) {
             string file=Path.Combine(root,"launcher",name);if(!File.Exists(file))throw new FileNotFoundException("Restore the missing Otono script: "+name);
             return Process.Start(new ProcessStartInfo(Environment.GetEnvironmentVariable("COMSPEC")??"cmd.exe","/d /s /c \"\""+file+"\" "+arguments+"\""){WorkingDirectory=root,UseShellExecute=true,WindowStyle=style});
+        }
+        void CheckUpdates(object sender,EventArgs e){
+            RefreshState();
+            if(!updateButton.Enabled)return;
+            try{updateProcess=RunScript("Check-for-Updates.cmd","");RefreshState();}catch(Exception x){Error(x);}
+        }
+        void CheckUpdateExit(){
+            if(updateProcess==null||Active(updateProcess))return;
+            int code=updateProcess.ExitCode;
+            updateProcess.Dispose();updateProcess=null;
+            if(code==10)Close();
         }
         void Setup(object sender,EventArgs e){try{setupProcess=RunScript("Initial-Server-Setup.cmd","--no-pause");SaveSession(setupProcess,"setup");RefreshState();}catch(Exception x){Error(x);}}
         void CheckSetupExit(){if(setupProcess==null||Active(setupProcess))return;int code=setupProcess.ExitCode;setupProcess.Dispose();setupProcess=null;RefreshState();if(code!=0)MessageBox.Show(this,"Setup did not complete. Run launcher\\Initial-Server-Setup.cmd directly to read the build error, correct it, then retry. Your saved database is not reset.","Setup needs attention",MessageBoxButtons.OK,MessageBoxIcon.Warning);}

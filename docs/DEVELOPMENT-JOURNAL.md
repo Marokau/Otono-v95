@@ -2,6 +2,14 @@
 
 This journal records fixes that changed gameplay or client behavior and how they were verified. Individual activity notes include implementation details.
 
+## v0.3.0 · Ludibrium Party Quest
+
+**Alishar combat.** A human observer could retain control of the passive boss while crew members attacked him. A surviving Alishar now engages on crew damage, faces a party member, and uses his native magic attack, Seal and Darkness. Preserving distinct levels of the same summon skill restores the three summon thresholds at 75%, 50% and 25% HP. Focused tests cover observer packets, damage to the crew and all three summons. The final in-game LPQ audit confirmed damage and summons.
+
+**Stage guidance.** The box-route hint now uses the numbers painted on the boxes, read from the bottom up: `133 221 333 123 111`. The boss-room banner and Violet Balloon direct the party to defeat Alishar, who is already present on entry.
+
+**Rewards.** Alishar’s defeat opens the six-box selection. The observed Sniper Potion is included. The full historical prize pool, quantities and weights are still provisional.
+
 ## v0.2.0 · Kerning City Party Quest
 
 ### Magic Claw at point-blank range

@@ -66,7 +66,7 @@ public final class Client extends NettyClient {
     public synchronized void close() {
         if (closed) return;
         closed = true;
-        if (user != null && !automated && !user.isInTransfer()) { kinoko.bot.KpqCrewService.dismiss(user); }
+        if (user != null && !automated && !user.isInTransfer()) { kinoko.bot.KpqCrewService.dismiss(user); kinoko.bot.LpqCrewService.dismiss(user); }
         super.close();
         if (user == null) {
             if (account != null) {

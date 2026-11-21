@@ -47,13 +47,18 @@ public final class CrewEncounters {
   for(var mob:mobs){
    if(mob.getHp()<=0)continue;
    Data values=metadata(mob.getTemplateId());
-   // A real client's controller retains ownership. A headless audit owner cannot drive monsters.
-   if((mob.getController()==null||mob.getController().getClient().getChannel() instanceof CrewChannel)&&now>=nextAction.getOrDefault(mob.getId(),0L)){
+   if (mob.hasCrewCombatController()) {
+    if (now >= nextAction.getOrDefault(mob.getId(), 0L)) {
+     nextAction.put(mob.getId(), now + advanceAlishar(mob, values));
+    }
+   // Other mobs retain graphical control whenever a graphical controller is present.
+   } else if((mob.getController()==null||mob.getController().getClient().getChannel() instanceof CrewChannel)&&now>=nextAction.getOrDefault(mob.getId(),0L)){
     nextAction.put(mob.getId(),now+500);
     var attack=new MobAttackInfo();attack.multiTargetForBall=List.of();attack.randTimeForAreaAttack=List.of();
     var skill=mob.getNextSkill();
     boolean usingSkill=skill.isPresent();
-    boolean attacking=!usingSkill&&(mob.isBoss())&&ThreadLocalRandom.current().nextInt(12)==0&&mob.getMp()>=2;
+    boolean lpq=field.getFieldStorage() instanceof kinoko.server.field.InstanceFieldStorage storage&&storage.getInstance().getVariable("lpq").orElse("").equals("1");
+    boolean attacking=!usingSkill&&(mob.isBoss()||lpq&&!values.attacks.isEmpty())&&ThreadLocalRandom.current().nextInt(12)==0&&mob.getMp()>=2;
     int attackIndex=attacking?mob.getTemplate().getAttacks().keySet().stream().skip(ThreadLocalRandom.current().nextInt(Math.max(1,mob.getTemplate().getAttacks().size()))).findFirst().orElse(0):0;
     attack.actionAndDir=(byte)((usingSkill?MobActionType.SKILL1.getValue():attacking?MobActionType.ATTACK1.getValue()+attackIndex:MobActionType.MOVE.getValue())*2);
     if(usingSkill)attack.targetInfo=skill.get().getSkillId()|(skill.get().getSkillLevel()<<8);
@@ -77,6 +82,59 @@ public final class CrewEncounters {
    }
   }
  }
+ // Alishar's Mob.wz action spans, including linked stand frames. attack1 hits at 1155 ms.
+ private static final int ALISHAR_ATTACK_MS = 2800;
+ private static final int ALISHAR_CAST_MS = 900;
+
+ private static int advanceAlishar(Mob mob, Data values) {
+  Field field = mob.getField();
+  var target = mob.getNearestObject(field.getUserPool().getPartyMembers(mob.getController().getPartyId())
+      .stream().filter(user -> user.getHp() > 0).toList());
+  if (target.isEmpty()) return 500;
+  User enemy = target.get();
+  int x = mob.getX(), y = mob.getY(), fh = mob.getFoothold();
+  boolean left = enemy.getX() < x;
+  mob.setLeft(left);
+  var skill = mob.getNextSkill().filter(candidate -> {
+   var info = SkillProvider.getMobSkillInfoById(candidate.getSkillId()).orElseThrow();
+   Rect range = info.getRect(candidate.getSkillLevel());
+   return range == null || mob.getRelativeRect(range).isInsideRect(enemy.getX(), enemy.getY());
+  });
+  var action = MobActionType.STAND;
+  int duration = 500, targetInfo = 0;
+  if (skill.isPresent()) {
+   action = MobActionType.SKILL1;
+   targetInfo = skill.get().getSkillId() | (skill.get().getSkillLevel() << 8);
+   duration = ALISHAR_CAST_MS;
+  } else if (mob.getMp() >= mob.getAttack(0).orElseThrow().getConMp()
+      && mob.getRelativeRect(values.attacks.get(0).area).isInsideRect(enemy.getX(), enemy.getY() - 10)) {
+   action = MobActionType.ATTACK1;
+   duration = ALISHAR_ATTACK_MS;
+  } else {
+   int step = Math.min(Math.abs(enemy.getX() - x), Math.max(5, (100 + values.speed) / 4));
+   int nx = x + (left ? -step : step);
+   var ground = field.getFootholdBelow(nx, y - 5);
+   if (step > 0 && ground.isPresent() && Math.abs(ground.get().getYFromX(nx) - y) <= 20) {
+    x = nx; y = ground.get().getYFromX(nx); fh = ground.get().getSn();
+    action = MobActionType.MOVE;
+   }
+  }
+  var attack = new MobAttackInfo();
+  attack.multiTargetForBall = List.of();
+  attack.randTimeForAreaAttack = List.of();
+  attack.actionAndDir = (byte) (action.getValue() * 2 + (left ? 1 : 0));
+  attack.targetInfo = targetInfo;
+  var move = new MoveElem((byte) 0);
+  move.setX((short) x); move.setY((short) y); move.setFh((short) fh);
+  // The one-shot casting/attack animation is in actionAndDir. The movement fragment ends at idle.
+  var stance = action == MobActionType.MOVE ? MobActionType.MOVE : MobActionType.STAND;
+  move.setMoveAction((byte) (stance.getValue() * 2 + (left ? 1 : 0)));
+  move.setElapse((short) duration);
+  var path = new MovePath((short) mob.getX(), (short) mob.getY(), (short) 0, (short) 0, List.of(move));
+  MobHandler.handleAutomatedMove(mob, attack, path);
+  return duration;
+ }
+
  static void checkMovingContact(User bot) {
   if (!bot.isAutomated() || !(bot.getField().getFieldStorage() instanceof kinoko.server.field.InstanceFieldStorage)) return;
   if (System.currentTimeMillis() < immuneUntil.getOrDefault(bot.getCharacterId(), 0L)) return;
@@ -97,7 +155,8 @@ public final class CrewEncounters {
  }
  public static void observeAttack(Mob mob,MobAttackInfo attack){
   if(!attack.isAttack)return;
-  if(mob.getTemplateId()!=9300003)return;
+  boolean lpq=mob.getField().getFieldStorage() instanceof kinoko.server.field.InstanceFieldStorage storage&&storage.getInstance().getVariable("lpq").orElse("").equals("1");
+  if(mob.getTemplateId()!=9300003&&!lpq)return;
   Data values=metadata(mob.getTemplateId());int index=(attack.actionAndDir>>1)-MobActionType.ATTACK1.getValue();var pattern=values.attacks.getOrDefault(index,values.attacks.get(index+100));if(pattern==null)return;
   boolean left=(attack.actionAndDir&1)!=0;int x=mob.getX(),y=mob.getY();
   var area=(left?pattern.area:pattern.area.flipX()).translate(x,y);

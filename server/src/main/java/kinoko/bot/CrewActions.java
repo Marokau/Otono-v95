@@ -30,6 +30,10 @@ public final class CrewActions {
         var p=OutPacket.of();p.encodeInt(0);p.encodeShort(position);p.encodeInt(KpqCrewPreparation.GINGER_ALE);
         ItemHandler.handleUserStatChangeItemUseRequest(user,input(p));return true;
     }
+    public static boolean allCure(User user){
+        int slot=position(user,LpqCrewPreparation.ALL_CURE);if(slot==0||user.getHp()<=0)return false;
+        var p=OutPacket.of();p.encodeInt(0);p.encodeShort(slot);p.encodeInt(LpqCrewPreparation.ALL_CURE);ItemHandler.handleUserStatChangeItemUseRequest(user,input(p));return true;
+    }
     public static boolean hitBox(User user,kinoko.world.field.reactor.Reactor box){
         if(user.hasDialog()||user.getHp()<=0||user.getSecondaryStat().hasOption(CharacterTemporaryStat.Stun)||box.isLastState()||Math.abs(user.getX()-box.getX())>75||Math.abs(user.getY()-box.getY())>65)return false;
         var attack=new Attack(OutHeader.UserMeleeAttack);attack.attackSpeed=6;attack.actionAndDir=(short)(ActionType.SWINGT1.getValue()|(box.getX()<user.getX()?0x8000:0));attack.userX=(short)user.getX();attack.userY=(short)user.getY();
@@ -55,6 +59,10 @@ public final class CrewActions {
     public static boolean portal(User user,String name){
         var portal=user.getField().getPortalByName(name).orElse(null);
         if(portal==null||Math.abs(user.getX()-portal.getX())>35||Math.abs(user.getY()-portal.getY())>65)return false;
+        if(kinoko.script.party.LudibriumPQ.instance(user).isPresent()){
+            var p=OutPacket.of();p.encodeByte(user.getFieldKey());p.encodeInt(0);p.encodeString(name);p.encodeShort(user.getX());p.encodeShort(user.getY());p.encodeByte(0);p.encodeByte(0);p.encodeByte(0);
+            kinoko.handler.stage.MigrationHandler.handleUserTransferFieldRequest(user,input(p));return true;
+        }
         var p=OutPacket.of();p.encodeByte(user.getFieldKey());p.encodeString(name);p.encodeShort(user.getX());p.encodeShort(user.getY());UserHandler.handleUserPortalScriptRequest(user,input(p));return true;
     }
     public static void answer(User user,OutPacket outbound,int menu){

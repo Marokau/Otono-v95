@@ -134,8 +134,8 @@ public final class Mob extends Life implements ControlledObject, Encodable {
         return template.getAttack(attackIndex);
     }
 
-    public Optional<MobSkill> getSkill(int skillId) {
-        return template.getSkill(skillId);
+    public Optional<MobSkill> getSkill(int skillId, int level) {
+        return template.getSkill(skillId, level);
     }
 
     public MobStat getMobStat() {
@@ -158,8 +158,7 @@ public final class Mob extends Life implements ControlledObject, Encodable {
         final int slv = mobSkill.getSkillLevel();
         final int hp = si.getValue(SkillStat.hp, slv);
         if (hp > 0) {
-            final double percentage = (double) getHp() / getMaxHp();
-            if (hp < (int) (percentage * 100)) {
+            if ((long) getHp() * 100 > (long) hp * getMaxHp()) {
                 return false;
             }
         }
@@ -173,7 +172,7 @@ public final class Mob extends Life implements ControlledObject, Encodable {
         if (nextSkillUse.isAfter(Instant.now())) {
             return Optional.empty();
         }
-        final List<MobSkill> available = template.getSkills().values().stream()
+        final List<MobSkill> available = template.getSkills().stream()
                 .filter(this::canUseSkill)
                 .toList();
         return Util.getRandomFromCollection(available);
@@ -370,6 +369,16 @@ public final class Mob extends Life implements ControlledObject, Encodable {
         updateHp(getHp() - actualDamage);
     }
 
+    public boolean isLpqAlishar() {
+        return getTemplateId() == 9300012 && getField().getFieldId() == kinoko.script.party.LudibriumPQ.BOSS
+                && getField().getFieldStorage() instanceof InstanceFieldStorage storage
+                && storage.getInstance().getVariable("lpq").orElse("").equals("1");
+    }
+
+    public boolean hasCrewCombatController() {
+        return controller != null && controller.isAutomated() && controller.getHp() > 0 && isLpqAlishar();
+    }
+
     public int getFinishingAttackerId() { return finishingAttackerId; }
 
     public void damage(User attacker, int totalDamage, int delay) {
@@ -381,6 +390,11 @@ public final class Mob extends Life implements ControlledObject, Encodable {
         final int actualDamage = Math.min(getHp(), totalDamage);
         damageDone.put(attacker.getCharacterId(), damageDone.getOrDefault(attacker.getCharacterId(), 0) + actualDamage);
         updateHp(getHp() - actualDamage);
+        // The passive LPQ boss needs a combat controller when a crew member engages him.
+        if (actualDamage > 0 && getHp() > 0 && attacker.isAutomated() && isLpqAlishar()
+                && (controller == null || !controller.isAutomated() || controller.getHp() <= 0)) {
+            getField().getUserPool().setController(this, attacker);
+        }
         // Handle death
         if (getHp() <= 0) {
             if (actualDamage > 0) finishingAttackerId = attacker.getCharacterId();
@@ -578,6 +592,7 @@ public final class Mob extends Life implements ControlledObject, Encodable {
     }
 
     private Optional<Drop> createDrop(User owner, Reward reward) {
+        if (kinoko.script.party.LudibriumPQ.suppressRatPass(this, reward.getItemId())) return Optional.empty();
         // Field requirement
         if (reward.isFieldRequirement() && reward.getFieldId() != getField().getFieldId()) {
             return Optional.empty();

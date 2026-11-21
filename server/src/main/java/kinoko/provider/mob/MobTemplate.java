@@ -36,13 +36,13 @@ public final class MobTemplate {
     private final boolean damagedByMob;
     private final boolean onlyNormalAttack;
     private final Map<Integer, MobAttack> attacks;
-    private final Map<Integer, MobSkill> skills;
+    private final List<MobSkill> skills;
     private final Map<ElementAttribute, DamagedAttribute> damagedElemAttr;
     private final Set<Integer> damagedBySkill;
     private final List<Integer> revives;
     private final int reviveDelay;
 
-    public MobTemplate(int id, int level, int exp, int maxHp, int maxMp, int pad, int pdr, int mad, int mdr, int acc, int eva, int hpRecovery, int mpRecovery, int fixedDamage, int removeAfter, int dropItemPeriod, int hpTagColor, int hpTagBgColor, boolean boss, boolean noFlip, boolean pickUpDrop, boolean firstAttack, boolean damagedByMob, boolean onlyNormalAttack, Map<Integer, MobAttack> attacks, Map<Integer, MobSkill> skills, Map<ElementAttribute, DamagedAttribute> damagedElemAttr, Set<Integer> damagedBySkill, List<Integer> revives, int reviveDelay) {
+    public MobTemplate(int id, int level, int exp, int maxHp, int maxMp, int pad, int pdr, int mad, int mdr, int acc, int eva, int hpRecovery, int mpRecovery, int fixedDamage, int removeAfter, int dropItemPeriod, int hpTagColor, int hpTagBgColor, boolean boss, boolean noFlip, boolean pickUpDrop, boolean firstAttack, boolean damagedByMob, boolean onlyNormalAttack, Map<Integer, MobAttack> attacks, List<MobSkill> skills, Map<ElementAttribute, DamagedAttribute> damagedElemAttr, Set<Integer> damagedBySkill, List<Integer> revives, int reviveDelay) {
         this.id = id;
         this.level = level;
         this.exp = exp;
@@ -189,12 +189,12 @@ public final class MobTemplate {
         return Optional.ofNullable(attacks.get(attackIndex));
     }
 
-    public Map<Integer, MobSkill> getSkills() {
+    public List<MobSkill> getSkills() {
         return skills;
     }
 
-    public Optional<MobSkill> getSkill(int skillId) {
-        return Optional.ofNullable(skills.get(skillId));
+    public Optional<MobSkill> getSkill(int skillId, int level) {
+        return skills.stream().filter(skill -> skill.getSkillId() == skillId && skill.getSkillLevel() == level).findFirst();
     }
 
     public Map<ElementAttribute, DamagedAttribute> getDamagedElemAttr() {
@@ -274,7 +274,7 @@ public final class MobTemplate {
         boolean damagedByMob = false;
         boolean onlyNormalAttack = false;
         final Map<Integer, MobAttack> attacks = new HashMap<>();
-        final Map<Integer, MobSkill> skills = new HashMap<>();
+        final List<MobSkill> skills = new ArrayList<>();
         final Map<ElementAttribute, DamagedAttribute> damagedElemAttr = new EnumMap<>(ElementAttribute.class);
         final Set<Integer> damagedBySkill = new HashSet<>();
         final List<Integer> revives = new ArrayList<>();
@@ -413,7 +413,7 @@ public final class MobTemplate {
                             throw new ProviderError("Failed to resolve mob skill : %d", skillId);
                         }
                         final int skillLevel = WzProvider.getInteger(skillProp.get("level"));
-                        skills.put(skillId, new MobSkill(
+                        skills.add(new MobSkill(
                                 skillType,
                                 skillId,
                                 skillLevel
@@ -488,7 +488,7 @@ public final class MobTemplate {
                 damagedByMob,
                 onlyNormalAttack,
                 Collections.unmodifiableMap(attacks),
-                Collections.unmodifiableMap(skills),
+                List.copyOf(skills),
                 Collections.unmodifiableMap(damagedElemAttr),
                 Collections.unmodifiableSet(damagedBySkill),
                 Collections.unmodifiableList(revives),
